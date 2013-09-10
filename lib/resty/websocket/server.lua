@@ -137,7 +137,7 @@ function _M.recv_frame(self)
     local data, err = sock:receive(2)
     if not data then
         self.fatal = true
-        return nil, nil, "failed to receive the first 2 bytes: " .. (err or "unknown")
+        return nil, nil, "failed to receive the first 2 bytes: " .. err
     end
 
     local fst, snd = byte(data, 1, 2)
@@ -251,9 +251,11 @@ function _M.recv_frame(self)
 
             local msg
             if payload_len > 2 then
-                local bytes = {}  -- XXX table.new() or even string.buffer optimizations
+                local bytes = {}  -- XXX table.new() or even string.buffer
+                                  -- optimizations
                 for i = 3, payload_len do
-                    bytes[i - 2] = str_char(bxor(byte(data, 4 + i), byte(data, (i - 1) % 4 + 1)))
+                    bytes[i - 2] = str_char(bxor(byte(data, 4 + i),
+                                                 byte(data, (i - 1) % 4 + 1)))
                 end
                 msg = concat(bytes)
 
@@ -269,7 +271,8 @@ function _M.recv_frame(self)
 
     local bytes = {}  -- XXX table.new() or even string.buffer optimizations
     for i = 1, payload_len do
-        bytes[i] = str_char(bxor(byte(data, 4 + i), byte(data, (i - 1) % 4 + 1)))
+        bytes[i] = str_char(bxor(byte(data, 4 + i),
+                                 byte(data, (i - 1) % 4 + 1)))
     end
 
     return concat(bytes), types[opcode]
