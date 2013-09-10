@@ -6,7 +6,7 @@ use Protocol::WebSocket::Frame;
 
 repeat_each(2);
 
-plan tests => repeat_each() * 119;
+plan tests => repeat_each() * 127;
 
 my $pwd = cwd();
 
@@ -676,6 +676,49 @@ Sec-WebSocket-Protocol: chat
 --- response_body
 --- error_log
 ping msg received: are you there? 你好: nil,
+--- no_error_log
+[error]
+--- error_code: 101
+
+
+
+=== TEST 16: pong frame (with payload)
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua '
+            local websocket = require "resty.websocket.server"
+            local wb, err = websocket:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+            local msg, typ, err = wb:recv_frame()
+            if not msg then
+                ngx.log(ngx.ERR, "failed to read msg: ", err)
+                return ngx.exit(444)
+            end
+            ngx.log(ngx.WARN, typ, " msg received: ", msg, ": ", err)
+        ';
+    }
+--- raw_request eval
+"GET /t HTTP/1.1\r
+Host: server.example.com\r
+Upgrade: websocket\r
+Connection: Upgrade\r
+Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==\r
+Sec-WebSocket-Protocol: chat\r
+Sec-WebSocket-Version: 13\r
+\r
+" . Protocol::WebSocket::Frame->new(buffer => "are you there? 你好", type => 'pong', masked => 1)->to_bytes();
+--- response_headers
+Upgrade: websocket
+Connection: upgrade
+Sec-WebSocket-Accept: HSmrc0sMlYUkAGmm5OPpG2HaGWk=
+Sec-WebSocket-Protocol: chat
+--- response_body
+--- error_log
+pong msg received: are you there? 你好: nil,
 --- no_error_log
 [error]
 --- error_code: 101
