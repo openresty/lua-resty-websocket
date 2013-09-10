@@ -6,7 +6,7 @@ use Protocol::WebSocket::Frame;
 
 repeat_each(2);
 
-plan tests => repeat_each() * 135;
+plan tests => repeat_each() * 129;
 
 my $pwd = cwd();
 
@@ -734,12 +734,12 @@ pong msg received: are you there? 你好: nil,
             local wb, err = websocket:new()
             if not wb then
                 ngx.log(ngx.ERR, "failed to new websocket: ", err)
-                return
+                return ngx.exit(444)
             end
             local msg, typ, err = wb:recv_frame()
             if not msg then
                 ngx.log(ngx.ERR, "failed to read msg: ", err)
-                return
+                return ngx.exit(444)
             end
             local m, err = ngx.re.match(msg, "^a{65535}b$", "jo")
             if m then
@@ -759,15 +759,9 @@ Sec-WebSocket-Protocol: chat\r
 Sec-WebSocket-Version: 13\r
 \r
 " . Protocol::WebSocket::Frame->new(buffer => "a" x 65535 . "b", type => 'text', masked => 1)->to_bytes();
---- response_headers
-Upgrade: websocket
-Connection: upgrade
-Sec-WebSocket-Accept: HSmrc0sMlYUkAGmm5OPpG2HaGWk=
-Sec-WebSocket-Protocol: chat
---- response_body
+--- ignore_response
 --- error_log
 failed to read msg: exceeding max payload len
 --- no_error_log
 text msg received is expected,
---- error_code: 101
 
