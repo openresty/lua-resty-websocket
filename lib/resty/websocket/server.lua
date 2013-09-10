@@ -252,12 +252,15 @@ function _M.recv_frame(self)
                     bytes[i - 2] = str_char(bxor(byte(data, 4 + i), byte(data, (i - 1) % 4 + 1)))
                 end
                 msg = concat(bytes)
+
+            else
+                msg = ""
             end
 
-            return code, "close", msg
+            return msg, "close", code
         end
 
-        return nil, "close", nil
+        return "", "close", nil
     end
 
     local bytes = {}  -- XXX table.new() or even string.buffer optimizations

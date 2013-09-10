@@ -6,7 +6,7 @@ use Protocol::WebSocket::Frame;
 
 repeat_each(2);
 
-plan tests => repeat_each() * 103;
+plan tests => repeat_each() * 119;
 
 my $pwd = cwd();
 
@@ -73,7 +73,7 @@ Sec-WebSocket-Protocol: chat
                 return ngx.exit(444)
             end
             local msg, typ, err = wb:recv_frame()
-            if not msg and not typ then
+            if not msg then
                 ngx.log(ngx.ERR, "failed to read msg: ", err)
                 return ngx.exit(444)
             end
@@ -116,7 +116,7 @@ text msg received: foo,
                 return ngx.exit(444)
             end
             local msg, typ, err = wb:recv_frame()
-            if not msg and not typ then
+            if not msg then
                 ngx.log(ngx.ERR, "failed to read msg: ", err)
                 return ngx.exit(444)
             end
@@ -159,7 +159,7 @@ text msg received: ,
                 return ngx.exit(444)
             end
             local msg, typ, err = wb:recv_frame()
-            if not msg and not typ then
+            if not msg then
                 ngx.log(ngx.ERR, "failed to read msg: ", err)
                 return ngx.exit(444)
             end
@@ -202,7 +202,7 @@ Sec-WebSocket-Protocol: chat
                 return ngx.exit(444)
             end
             local msg, typ, err = wb:recv_frame()
-            if not msg and not typ then
+            if not msg then
                 ngx.log(ngx.ERR, "failed to read msg: ", err)
                 return ngx.exit(444)
             end
@@ -245,7 +245,7 @@ Sec-WebSocket-Protocol: chat
                 return ngx.exit(444)
             end
             local msg, typ, err = wb:recv_frame()
-            if not msg and not typ then
+            if not msg then
                 ngx.log(ngx.ERR, "failed to read msg: ", err)
                 return ngx.exit(444)
             end
@@ -288,7 +288,7 @@ Sec-WebSocket-Protocol: chat
                 return ngx.exit(444)
             end
             local msg, typ, err = wb:recv_frame()
-            if not msg and not typ then
+            if not msg then
                 ngx.log(ngx.ERR, "failed to read msg: ", err)
                 return ngx.exit(444)
             end
@@ -336,7 +336,7 @@ text msg received is expected,
                 return ngx.exit(444)
             end
             local msg, typ, err = wb:recv_frame()
-            if not msg and not typ then
+            if not msg then
                 ngx.log(ngx.ERR, "failed to read msg: ", err)
                 return ngx.exit(444)
             end
@@ -384,7 +384,7 @@ text msg received is expected,
                 return ngx.exit(444)
             end
             local msg, typ, err = wb:recv_frame()
-            if not msg and not typ then
+            if not msg then
                 ngx.log(ngx.ERR, "failed to read msg: ", err)
                 return ngx.exit(444)
             end
@@ -436,7 +436,7 @@ text msg received is expected,
                 return ngx.exit(444)
             end
             local msg, typ, err = wb:recv_frame()
-            if not msg and not typ then
+            if not msg then
                 ngx.log(ngx.ERR, "failed to read msg: ", err)
                 return ngx.exit(444)
             end
@@ -479,7 +479,7 @@ binary msg received: foo,
                 return ngx.exit(444)
             end
             local msg, typ, err = wb:recv_frame()
-            if not msg and not typ then
+            if not msg then
                 ngx.log(ngx.ERR, "failed to read msg: ", err)
                 return ngx.exit(444)
             end
@@ -503,7 +503,7 @@ Sec-WebSocket-Accept: HSmrc0sMlYUkAGmm5OPpG2HaGWk=
 Sec-WebSocket-Protocol: chat
 --- response_body
 --- error_log
-close msg received: 1000: yes, closed,
+close msg received: yes, closed: 1000,
 --- no_error_log
 [error]
 --- error_code: 101
@@ -522,7 +522,7 @@ close msg received: 1000: yes, closed,
                 return ngx.exit(444)
             end
             local msg, typ, err = wb:recv_frame()
-            if not msg and not typ then
+            if not msg then
                 ngx.log(ngx.ERR, "failed to read msg: ", err)
                 return ngx.exit(444)
             end
@@ -546,7 +546,7 @@ Sec-WebSocket-Accept: HSmrc0sMlYUkAGmm5OPpG2HaGWk=
 Sec-WebSocket-Protocol: chat
 --- response_body
 --- error_log
-close msg received: 1002: nil,
+close msg received: : 1002,
 --- no_error_log
 [error]
 --- error_code: 101
@@ -565,7 +565,7 @@ close msg received: 1002: nil,
                 return ngx.exit(444)
             end
             local msg, typ, err = wb:recv_frame()
-            if not msg and not typ then
+            if not msg then
                 ngx.log(ngx.ERR, "failed to read msg: ", err)
                 return ngx.exit(444)
             end
@@ -589,7 +589,93 @@ Sec-WebSocket-Accept: HSmrc0sMlYUkAGmm5OPpG2HaGWk=
 Sec-WebSocket-Protocol: chat
 --- response_body
 --- error_log
-close msg received: nil: nil,
+close msg received: : nil,
+--- no_error_log
+[error]
+--- error_code: 101
+
+
+
+=== TEST 14: ping frame (no payload at all)
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua '
+            local websocket = require "resty.websocket.server"
+            local wb, err = websocket:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+            local msg, typ, err = wb:recv_frame()
+            if not msg then
+                ngx.log(ngx.ERR, "failed to read msg: ", err)
+                return ngx.exit(444)
+            end
+            ngx.log(ngx.WARN, typ, " msg received: ", msg, ": ", err)
+        ';
+    }
+--- raw_request eval
+"GET /t HTTP/1.1\r
+Host: server.example.com\r
+Upgrade: websocket\r
+Connection: Upgrade\r
+Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==\r
+Sec-WebSocket-Protocol: chat\r
+Sec-WebSocket-Version: 13\r
+\r
+" . Protocol::WebSocket::Frame->new(buffer => "", type => 'ping', masked => 1)->to_bytes();
+--- response_headers
+Upgrade: websocket
+Connection: upgrade
+Sec-WebSocket-Accept: HSmrc0sMlYUkAGmm5OPpG2HaGWk=
+Sec-WebSocket-Protocol: chat
+--- response_body
+--- error_log
+ping msg received: : nil,
+--- no_error_log
+[error]
+--- error_code: 101
+
+
+
+=== TEST 15: ping frame (with payload)
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua '
+            local websocket = require "resty.websocket.server"
+            local wb, err = websocket:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+            local msg, typ, err = wb:recv_frame()
+            if not msg then
+                ngx.log(ngx.ERR, "failed to read msg: ", err)
+                return ngx.exit(444)
+            end
+            ngx.log(ngx.WARN, typ, " msg received: ", msg, ": ", err)
+        ';
+    }
+--- raw_request eval
+"GET /t HTTP/1.1\r
+Host: server.example.com\r
+Upgrade: websocket\r
+Connection: Upgrade\r
+Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==\r
+Sec-WebSocket-Protocol: chat\r
+Sec-WebSocket-Version: 13\r
+\r
+" . Protocol::WebSocket::Frame->new(buffer => "are you there? 你好", type => 'ping', masked => 1)->to_bytes();
+--- response_headers
+Upgrade: websocket
+Connection: upgrade
+Sec-WebSocket-Accept: HSmrc0sMlYUkAGmm5OPpG2HaGWk=
+Sec-WebSocket-Protocol: chat
+--- response_body
+--- error_log
+ping msg received: are you there? 你好: nil,
 --- no_error_log
 [error]
 --- error_code: 101
