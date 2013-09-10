@@ -231,8 +231,6 @@ function _M.recv_frame(self)
                          .. (err or "unknown")
     end
 
-    local payload
-
     if opcode == 0x8 then
         -- being a close frame
         if payload_len > 0 then
