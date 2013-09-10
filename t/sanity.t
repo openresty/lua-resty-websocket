@@ -6,7 +6,7 @@ use Protocol::WebSocket::Frame;
 
 repeat_each(2);
 
-plan tests => repeat_each() * 127;
+plan tests => repeat_each() * 135;
 
 my $pwd = cwd();
 
@@ -330,7 +330,7 @@ text msg received is expected,
     location = /t {
         content_by_lua '
             local websocket = require "resty.websocket.server"
-            local wb, err = websocket:new()
+            local wb, err = websocket:new{ max_payload_len = 65536 }
             if not wb then
                 ngx.log(ngx.ERR, "failed to new websocket: ", err)
                 return ngx.exit(444)
@@ -378,15 +378,15 @@ text msg received is expected,
     location = /t {
         content_by_lua '
             local websocket = require "resty.websocket.server"
-            local wb, err = websocket:new()
+            local wb, err = websocket:new{ max_payload_len = 1048576 + 1 }
             if not wb then
                 ngx.log(ngx.ERR, "failed to new websocket: ", err)
-                return ngx.exit(444)
+                return
             end
             local msg, typ, err = wb:recv_frame()
             if not msg then
                 ngx.log(ngx.ERR, "failed to read msg: ", err)
-                return ngx.exit(444)
+                return
             end
             local m, err = ngx.re.match(msg, "^a+b$", "jo")
             if m and #msg == 1048576 + 1 then
@@ -721,5 +721,53 @@ Sec-WebSocket-Protocol: chat
 pong msg received: are you there? 你好: nil,
 --- no_error_log
 [error]
+--- error_code: 101
+
+
+
+=== TEST 17: exceeding the default 65535 max frame len limit (65536 bytes)
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua '
+            local websocket = require "resty.websocket.server"
+            local wb, err = websocket:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return
+            end
+            local msg, typ, err = wb:recv_frame()
+            if not msg then
+                ngx.log(ngx.ERR, "failed to read msg: ", err)
+                return
+            end
+            local m, err = ngx.re.match(msg, "^a{65535}b$", "jo")
+            if m then
+                ngx.log(ngx.WARN, typ, " msg received is expected")
+            else
+                ngx.log(ngx.WARN, typ, " msg received is NOT expected")
+            end
+        ';
+    }
+--- raw_request eval
+"GET /t HTTP/1.1\r
+Host: server.example.com\r
+Upgrade: websocket\r
+Connection: Upgrade\r
+Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==\r
+Sec-WebSocket-Protocol: chat\r
+Sec-WebSocket-Version: 13\r
+\r
+" . Protocol::WebSocket::Frame->new(buffer => "a" x 65535 . "b", type => 'text', masked => 1)->to_bytes();
+--- response_headers
+Upgrade: websocket
+Connection: upgrade
+Sec-WebSocket-Accept: HSmrc0sMlYUkAGmm5OPpG2HaGWk=
+Sec-WebSocket-Protocol: chat
+--- response_body
+--- error_log
+failed to read msg: exceeding max payload len
+--- no_error_log
+text msg received is expected,
 --- error_code: 101
 

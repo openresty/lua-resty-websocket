@@ -112,15 +112,14 @@ function _M.new(self, opts)
         return nil, err
     end
 
-    local max_msg_len
-
-    if opt then
-        max_msg_len = opt.max_msg_len or 8192
+    local max_payload_len
+    if opts then
+        max_payload_len = opts.max_payload_len
     end
 
     return setmetatable({
         sock = sock,
-        max_msg_len = max_msg_len,
+        max_payload_len = max_payload_len or 65535,
     }, mt)
 end
 
@@ -220,6 +219,13 @@ function _M.recv_frame(self)
             self.fatal = true
             return nil, nil, "fragmented control frame"
         end
+    end
+
+    print("payload len: ", payload_len, ", max payload len: ",
+          self.max_payload_len)
+
+    if payload_len > self.max_payload_len then
+        return nil, nil, "exceeding max payload len"
     end
 
     rest = payload_len + 4
