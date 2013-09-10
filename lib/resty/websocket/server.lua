@@ -258,16 +258,14 @@ function _M.recv_frame(self)
         end
 
         return nil, "close", nil
-
-    else
-
-        local bytes = {}  -- XXX table.new() or even string.buffer optimizations
-        for i = 1, payload_len do
-            bytes[i] = str_char(bxor(byte(data, 4 + i), byte(data, (i - 1) % 4 + 1)))
-        end
-
-        return concat(bytes), types[opcode]
     end
+
+    local bytes = {}  -- XXX table.new() or even string.buffer optimizations
+    for i = 1, payload_len do
+        bytes[i] = str_char(bxor(byte(data, 4 + i), byte(data, (i - 1) % 4 + 1)))
+    end
+
+    return concat(bytes), types[opcode]
 end
 
 

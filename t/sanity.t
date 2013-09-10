@@ -6,7 +6,7 @@ use Protocol::WebSocket::Frame;
 
 repeat_each(2);
 
-plan tests => repeat_each() * 79;
+plan tests => repeat_each() * 103;
 
 my $pwd = cwd();
 
