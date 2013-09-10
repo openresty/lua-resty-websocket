@@ -41,6 +41,10 @@ each request.
 Installation
 ============
 
+For now, you need to use the "websocket" git branch of ngx_lua:
+
+https://github.com/chaoslawful/lua-nginx-module/tree/websocket
+
 You need to configure
 the lua_package_path directive to add the path of your lua-resty-websocket source
 tree to ngx_lua's LUA_PATH search path, as in
