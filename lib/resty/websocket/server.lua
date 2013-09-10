@@ -125,7 +125,11 @@ function _M.new(self, opts)
 end
 
 
-function _M.read_msg(self)
+function _M.recv_frame(self)
+    if self.fatal then
+        return nil, nil, "fatal error already happened"
+    end
+
     local sock = self.sock
     if not sock then
         return nil, nil, "not initialized yet"
@@ -133,6 +137,7 @@ function _M.read_msg(self)
 
     local data, err = sock:receive(2)
     if not data then
+        self.fatal = true
         return nil, nil, "failed to receive the first 2 bytes: " .. (err or "unknown")
     end
 
@@ -142,6 +147,7 @@ function _M.read_msg(self)
     -- print("fin: ", fin)
 
     if band(fst, 0x70) ~= 0 then
+        self.fatal = true
         return nil, nil, "bad RSV1, RSV2, or RSV3 bits"
     end
 
@@ -149,16 +155,19 @@ function _M.read_msg(self)
     -- print("opcode: ", tohex(opcode))
 
     if opcode >= 0x3 and opcode <= 0x7 then
+        self.fatal = true
         return nil, nil, "reserved non-control frames"
     end
 
     if opcode >= 0xb and opcode <= 0xf then
+        self.fatal = true
         return nil, nil, "reserved control frames"
     end
 
     local mask = band(snd, 0x80) ~= 0
     -- print("mask bit: ", mask)
     if not mask then
+        self.fatal = true
         return nil, nil, "frame unmasked"
     end
 
@@ -169,6 +178,7 @@ function _M.read_msg(self)
     if payload_len == 126 then
         local data, err = sock:receive(2)
         if not data then
+            self.fatal = true
             return nil, nil, "failed to receive the 2 byte payload length: "
                              .. (err or "unknown")
         end
@@ -178,12 +188,14 @@ function _M.read_msg(self)
     elseif payload_len == 127 then
         local data, err = sock:receive(8)
         if not data then
+            self.fatal = true
             return nil, nil, "failed to receive the 8 byte payload length: "
                              .. (err or "unknown")
         end
 
         local fst = byte(data, 1)
         if band(fst, 0x80) ~= 0 then
+            self.fatal = true
             return nil, nil, "payload len too large"
         end
 
@@ -197,20 +209,65 @@ function _M.read_msg(self)
                           byte(data, 8))
     end
 
+    if band(opcode, 0x8) ~= 0 then
+        -- being a control frame
+        if payload_len > 125 then
+            self.fatal = true
+            return nil, nil, "too long payload for control frame"
+        end
+
+        if not fin then
+            self.fatal = true
+            return nil, nil, "fragmented control frame"
+        end
+    end
+
     rest = payload_len + 4
 
     local data, err = sock:receive(rest)
     if not data then
+        self.fatal = true
         return nil, nil, "failed to read masking-len and payload: "
                          .. (err or "unknown")
     end
 
-    local bytes = {}  -- table.new() optimization
-    for i = 1, payload_len do
-        bytes[i] = str_char(bxor(byte(data, 4 + i), byte(data, (i - 1) % 4 + 1)))
-    end
+    local payload
 
-    return concat(bytes), types[opcode]
+    if opcode == 0x8 then
+        -- being a close frame
+        if payload_len > 0 then
+            if payload_len < 2 then
+                return nil, nil, "close frame with a body must carry a 2-byte"
+                                 .. " status code"
+            end
+
+            local fst = bxor(byte(data, 4 + 1), byte(data, 1))
+            local snd = bxor(byte(data, 4 + 2), byte(data, 2))
+            local code = bor(lshift(fst, 8), snd)
+
+            local msg
+            if payload_len > 2 then
+                local bytes = {}  -- XXX table.new() or even string.buffer optimizations
+                for i = 3, payload_len do
+                    bytes[i - 2] = str_char(bxor(byte(data, 4 + i), byte(data, (i - 1) % 4 + 1)))
+                end
+                msg = concat(bytes)
+            end
+
+            return code, "close", msg
+        end
+
+        return nil, "close", nil
+
+    else
+
+        local bytes = {}  -- XXX table.new() or even string.buffer optimizations
+        for i = 1, payload_len do
+            bytes[i] = str_char(bxor(byte(data, 4 + i), byte(data, (i - 1) % 4 + 1)))
+        end
+
+        return concat(bytes), types[opcode]
+    end
 end
 
 
