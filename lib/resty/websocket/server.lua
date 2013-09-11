@@ -275,7 +275,7 @@ function _M.recv_frame(self)
                                  byte(data, (i - 1) % 4 + 1)))
     end
 
-    return concat(bytes), types[opcode]
+    return concat(bytes), types[opcode], not fin and "again" or nil
 end
 
 

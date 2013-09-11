@@ -77,7 +77,7 @@ Sec-WebSocket-Protocol: chat
                 ngx.log(ngx.ERR, "failed to read msg: ", err)
                 return ngx.exit(444)
             end
-            ngx.log(ngx.WARN, typ, " msg received: ", msg)
+            ngx.log(ngx.WARN, typ, " msg received: ", msg, ": ", err)
         ';
     }
 --- raw_request eval
@@ -97,7 +97,7 @@ Sec-WebSocket-Accept: HSmrc0sMlYUkAGmm5OPpG2HaGWk=
 Sec-WebSocket-Protocol: chat
 --- response_body
 --- error_log
-text msg received: foo,
+text msg received: foo: nil,
 --- no_error_log
 [error]
 --- error_code: 101
@@ -764,4 +764,49 @@ Sec-WebSocket-Version: 13\r
 failed to read msg: exceeding max payload len
 --- no_error_log
 text msg received is expected,
+
+
+
+=== TEST 18: simple text data frame (3 bytes, fragmented)
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua '
+            local websocket = require "resty.websocket.server"
+            local wb, err = websocket:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+            local msg, typ, err = wb:recv_frame()
+            if not msg then
+                ngx.log(ngx.ERR, "failed to read msg: ", err)
+                return ngx.exit(444)
+            end
+            ngx.log(ngx.WARN, typ, " msg received: ", msg, ": ", err)
+        ';
+    }
+--- raw_request eval
+my $frame = Protocol::WebSocket::Frame->new(buffer => 'foo', type => 'text', masked => 1)->to_bytes();
+$frame =~ s/./chr(ord($&) & 0x7f)/e; # clear the FIN bit
+"GET /t HTTP/1.1\r
+Host: server.example.com\r
+Upgrade: websocket\r
+Connection: Upgrade\r
+Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==\r
+Sec-WebSocket-Protocol: chat\r
+Sec-WebSocket-Version: 13\r
+\r
+$frame";
+--- response_headers
+Upgrade: websocket
+Connection: upgrade
+Sec-WebSocket-Accept: HSmrc0sMlYUkAGmm5OPpG2HaGWk=
+Sec-WebSocket-Protocol: chat
+--- response_body
+--- error_log
+text msg received: foo: again,
+--- no_error_log
+[error]
+--- error_code: 101
 
