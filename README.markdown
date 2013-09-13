@@ -40,11 +40,11 @@ Synopsis
 
         local bytes, err = wb:send_close(1000, "enough, enough!")
         if not bytes then
-            ngx.say("failed to send the close frame: ", err)
+            ngx.log(ngx.ERR, "failed to send the close frame: ", err)
             return
         end
         local code = err
-        ngx.say("closing with status code ", code, " and message ", data)
+        ngx.log(ngx.INFO, "closing with status code ", code, " and message ", data)
         return
     end
 
@@ -53,14 +53,14 @@ Synopsis
 
         local bytes, err = wb:send_pong(data)
         if not bytes then
-            ngx.say("failed to send frame: ", err)
+            ngx.log(ngx.ERR, "failed to send frame: ", err)
             return
         end
     elseif typ == "pong" then
         -- just discard the incoming pong frame
 
     else
-        ngx.say("received a frame of type ", typ, " and payload ", data)
+        ngx.log(ngx.INFO, "received a frame of type ", typ, " and payload ", data)
     end
 
     bytes, err = wb:send_text("Hello world")
@@ -77,12 +77,22 @@ Synopsis
 
     local bytes, err = wb:send_close(1000, "enough, enough!")
     if not bytes then
-        ngx.say("failed to send the close frame: ", err)
+        ngx.log(ngx.ERR, "failed to send the close frame: ", err)
         return
     end
 
-Methods
+Modules
 =======
+
+resty.websocket.server
+----------------------
+
+### Methods
+
+resty.websocket.client
+----------------------
+
+### Methods
 
 Limitations
 ===========
