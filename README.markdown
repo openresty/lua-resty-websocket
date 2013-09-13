@@ -6,7 +6,7 @@ lua-resty-websocket - Lua WebSocket implementation for the ngx_lua module
 Status
 ======
 
-This library is still under early development and is not usable yet.
+This library is still under early development and considered experimental.
 
 Description
 ===========
