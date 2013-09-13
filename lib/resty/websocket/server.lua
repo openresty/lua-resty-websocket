@@ -12,6 +12,7 @@ local ngx_header = ngx.header
 local req_headers = ngx.req.get_headers
 local str_lower = string.lower
 local char = string.char
+local str_find = string.find
 local sha1_bin = ngx.sha1_bin
 local base64 = ngx.encode_base64
 local ngx = ngx
@@ -52,7 +53,7 @@ function _M.new(self, opts)
     if type(val) == "table" then
         val = val[1]
     end
-    if not val or str_lower(val) ~= "upgrade" then
+    if not val or not str_find(str_lower(val), "upgrade", 1, true) then
         return nil, "bad \"connection\" request header"
     end
 

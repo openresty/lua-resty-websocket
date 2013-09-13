@@ -6,7 +6,7 @@ use Protocol::WebSocket::Frame;
 
 repeat_each(2);
 
-plan tests => repeat_each() * 153;
+plan tests => repeat_each() * 160;
 
 my $pwd = cwd();
 
@@ -896,6 +896,44 @@ Sec-WebSocket-Protocol: chat
 --- response_body
 --- error_log
 continuation msg received: foo: again,
+--- no_error_log
+[error]
+--- error_code: 101
+
+
+
+=== TEST 21: Firefox 22.0 handshake
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua '
+            local websocket = require "resty.websocket.server"
+            local wb, err = websocket:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+        ';
+    }
+--- raw_request eval
+"GET /t HTTP/1.1\r
+Host: server.example.com\r
+Upgrade: websocket\r
+Connection: keep-alive, Upgrade\r
+Cache-Control: no-cache\r
+Pragma: no-cache\r
+Sec-WebSocket-Key: 05EiFj8mhoZ5F/oFE3Tyeg==\r
+Sec-WebSocket-Protocol: chat\r
+Sec-WebSocket-Version: 13\r
+Origin: null\r
+\r
+"
+--- response_headers
+Upgrade: websocket
+Connection: upgrade
+Sec-WebSocket-Accept: tBNO4O+F4DrQyajB62pvtRNU8LM=
+Sec-WebSocket-Protocol: chat
+--- response_body
 --- no_error_log
 [error]
 --- error_code: 101
