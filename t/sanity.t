@@ -6,7 +6,7 @@ use Protocol::WebSocket::Frame;
 
 repeat_each(2);
 
-plan tests => repeat_each() * 161;
+plan tests => repeat_each() * 162;
 
 my $pwd = cwd();
 
@@ -55,6 +55,7 @@ Connection: upgrade
 Sec-WebSocket-Accept: HSmrc0sMlYUkAGmm5OPpG2HaGWk=
 Sec-WebSocket-Protocol: chat
 !Content-Type
+--- raw_response_headers_like: ^HTTP/1.1 101 Switching Protocols\r\n
 --- response_body
 --- no_error_log
 [error]
