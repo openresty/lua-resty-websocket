@@ -7,3 +7,4 @@ reindex
 *.t_
 tags
 a.patch
+*.html
