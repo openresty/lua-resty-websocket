@@ -2,25 +2,23 @@
 
 
 local bit = require "bit"
+local wbproto = require "resty.websocket.protocol"
 
+local _recv_frame = wbproto.recv_frame
+local _send_frame = wbproto.send_frame
 local http_ver = ngx.req.http_version
 local req_sock = ngx.req.socket
 local ngx_header = ngx.header
 local req_headers = ngx.req.get_headers
 local str_lower = string.lower
-local str_char = string.char
-local byte = string.byte
+local char = string.char
 local sha1_bin = ngx.sha1_bin
 local base64 = ngx.encode_base64
 local ngx = ngx
 local read_body = ngx.req.read_body
 local band = bit.band
-local bor = bit.bor
-local bxor = bit.bxor
-local lshift = bit.lshift
-local tohex = bit.tohex
-local print = print
-local concat = table.concat
+local rshift = bit.rshift
+-- local print = print
 
 
 local _M = {
@@ -28,15 +26,6 @@ local _M = {
 }
 
 local mt = { __index = _M }
-
-local types = {
-    [0x1] = "text",
-    [0x2] = "binary",
-    [0x8] = "close",
-    [0x9] = "ping",
-    [0xa] = "pong",
-}
-
 
 function _M.new(self, opts)
     if ngx.headers_sent then
@@ -112,14 +101,16 @@ function _M.new(self, opts)
         return nil, err
     end
 
-    local max_payload_len
+    local max_payload_len, send_masked
     if opts then
         max_payload_len = opts.max_payload_len
+        send_masked = opts.send_masked
     end
 
     return setmetatable({
         sock = sock,
         max_payload_len = max_payload_len or 65535,
+        sned_masked = send_masked,
     }, mt)
 end
 
@@ -134,148 +125,63 @@ function _M.recv_frame(self)
         return nil, nil, "not initialized yet"
     end
 
-    local data, err = sock:receive(2)
+    local data, typ, err =  _recv_frame(sock, self.max_payload_len, true)
     if not data then
         self.fatal = true
-        return nil, nil, "failed to receive the first 2 bytes: " .. err
+    end
+    return data, typ, err
+end
+
+
+local function send_frame(self, fin, opcode, payload, max_payload_len)
+    if self.fatal then
+        return nil, "fatal error already happened"
     end
 
-    local fst, snd = byte(data, 1, 2)
+    local sock = self.sock
+    if not sock then
+        return nil, "not initialized yet"
+    end
 
-    local fin = band(fst, 0x80) ~= 0
-    -- print("fin: ", fin)
-
-    if band(fst, 0x70) ~= 0 then
+    local bytes, err = _send_frame(sock, fin, opcode, payload,
+                                   self.max_payload_len, self.send_masked)
+    if not bytes then
         self.fatal = true
-        return nil, nil, "bad RSV1, RSV2, or RSV3 bits"
     end
+    return bytes, err
+end
+_M.send_frame = send_frame
 
-    local opcode = band(fst, 0x0f)
-    -- print("opcode: ", tohex(opcode))
 
-    if opcode >= 0x3 and opcode <= 0x7 then
-        self.fatal = true
-        return nil, nil, "reserved non-control frames"
-    end
+function _M.send_text(self, data)
+    return send_frame(self, true, 0x1, data)
+end
 
-    if opcode >= 0xb and opcode <= 0xf then
-        self.fatal = true
-        return nil, nil, "reserved control frames"
-    end
 
-    local mask = band(snd, 0x80) ~= 0
-    -- print("mask bit: ", mask)
-    if not mask then
-        self.fatal = true
-        return nil, nil, "frame unmasked"
-    end
+function _M.send_binary(self, data)
+    return send_frame(self, true, 0x2, data)
+end
 
-    local payload_len = band(snd, 0x7f)
-    -- print("payload len: ", payload_len)
 
-    local rest
-    if payload_len == 126 then
-        local data, err = sock:receive(2)
-        if not data then
-            self.fatal = true
-            return nil, nil, "failed to receive the 2 byte payload length: "
-                             .. (err or "unknown")
+function _M.send_close(self, code, msg)
+    local payload
+    if code then
+        if type(code) ~= "number" or code > 0x7fff then
         end
-
-        payload_len = bor(lshift(byte(data, 1), 8), byte(data, 2))
-
-    elseif payload_len == 127 then
-        local data, err = sock:receive(8)
-        if not data then
-            self.fatal = true
-            return nil, nil, "failed to receive the 8 byte payload length: "
-                             .. (err or "unknown")
-        end
-
-        local fst = byte(data, 1)
-        if band(fst, 0x80) ~= 0 then
-            self.fatal = true
-            return nil, nil, "payload len too large"
-        end
-
-        payload_len = bor(lshift(fst, 56),
-                          lshift(byte(data, 2), 48),
-                          lshift(byte(data, 3), 40),
-                          lshift(byte(data, 4), 32),
-                          lshift(byte(data, 5), 24),
-                          lshift(byte(data, 6), 16),
-                          lshift(byte(data, 7), 8),
-                          byte(data, 8))
+        payload = char(band(rshift(code, 8), 0xff), band(code, 0xff))
+                        .. (msg or "")
     end
+    return send_frame(self, true, 0x8, payload)
+end
 
-    if band(opcode, 0x8) ~= 0 then
-        -- being a control frame
-        if payload_len > 125 then
-            self.fatal = true
-            return nil, nil, "too long payload for control frame"
-        end
 
-        if not fin then
-            self.fatal = true
-            return nil, nil, "fragmented control frame"
-        end
-    end
+function _M.send_ping(self, data)
+    return send_frame(self, true, 0x9, data)
+end
 
-    print("payload len: ", payload_len, ", max payload len: ",
-          self.max_payload_len)
 
-    if payload_len > self.max_payload_len then
-        return nil, nil, "exceeding max payload len"
-    end
-
-    rest = payload_len + 4
-
-    local data, err = sock:receive(rest)
-    if not data then
-        self.fatal = true
-        return nil, nil, "failed to read masking-len and payload: "
-                         .. (err or "unknown")
-    end
-
-    if opcode == 0x8 then
-        -- being a close frame
-        if payload_len > 0 then
-            if payload_len < 2 then
-                return nil, nil, "close frame with a body must carry a 2-byte"
-                                 .. " status code"
-            end
-
-            local fst = bxor(byte(data, 4 + 1), byte(data, 1))
-            local snd = bxor(byte(data, 4 + 2), byte(data, 2))
-            local code = bor(lshift(fst, 8), snd)
-
-            local msg
-            if payload_len > 2 then
-                local bytes = {}  -- XXX table.new() or even string.buffer
-                                  -- optimizations
-                for i = 3, payload_len do
-                    bytes[i - 2] = str_char(bxor(byte(data, 4 + i),
-                                                 byte(data, (i - 1) % 4 + 1)))
-                end
-                msg = concat(bytes)
-
-            else
-                msg = ""
-            end
-
-            return msg, "close", code
-        end
-
-        return "", "close", nil
-    end
-
-    local bytes = {}  -- XXX table.new() or even string.buffer optimizations
-    for i = 1, payload_len do
-        bytes[i] = str_char(bxor(byte(data, 4 + i),
-                                 byte(data, (i - 1) % 4 + 1)))
-    end
-
-    return concat(bytes), types[opcode], not fin and "again" or nil
+function _M.send_pong(self, data)
+    return send_frame(self, true, 0xa, data)
 end
 
 

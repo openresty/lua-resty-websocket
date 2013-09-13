@@ -850,7 +850,7 @@ Sec-WebSocket-Accept: HSmrc0sMlYUkAGmm5OPpG2HaGWk=
 Sec-WebSocket-Protocol: chat
 --- response_body
 --- error_log
-nil msg received: foo: nil,
+continuation msg received: foo: nil,
 --- no_error_log
 [error]
 --- error_code: 101
@@ -895,7 +895,7 @@ Sec-WebSocket-Accept: HSmrc0sMlYUkAGmm5OPpG2HaGWk=
 Sec-WebSocket-Protocol: chat
 --- response_body
 --- error_log
-nil msg received: foo: again,
+continuation msg received: foo: again,
 --- no_error_log
 [error]
 --- error_code: 101
