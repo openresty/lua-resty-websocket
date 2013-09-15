@@ -16,6 +16,7 @@ local re_match = ngx.re.match
 local encode_base64 = ngx.encode_base64
 local concat = table.concat
 local char = string.char
+local str_find = string.find
 local rand = math.random
 local rshift = bit.rshift
 local band = bit.band
@@ -146,6 +147,16 @@ function _M.connect(self, uri, opts)
 end
 
 
+function _M.set_timeout(self, time)
+    local sock = self.sock
+    if not sock then
+        return nil, nil, "not initialized yet"
+    end
+
+    return sock:settimeout(time)
+end
+
+
 function _M.recv_frame(self)
     if self.fatal then
         return nil, nil, "fatal error already happened"
@@ -157,7 +168,7 @@ function _M.recv_frame(self)
     end
 
     local data, typ, err =  _recv_frame(sock, self.max_payload_len, false)
-    if not data then
+    if not data and not str_find(err, ": timeout", 1, true) then
         self.fatal = true
     end
     return data, typ, err

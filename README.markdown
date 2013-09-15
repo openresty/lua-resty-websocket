@@ -109,6 +109,11 @@ An optional options table can be specified. The following options are as follows
 * `send_masked`
 : Specifies whether to send out masked WebSocket frames. When it is `true`, masked frames are always sent. Default to `false`.
 
+#### set_timeout
+`syntax: wb:set_timeout(ms)`
+
+Sets the timeout delay (in milliseconds) for the network-related operations.
+
 #### send_text
 `syntax: bytes, err = wb:send_text(text)`
 
@@ -214,6 +219,11 @@ An optional options table can be specified. The following options are as follows
 : Specifies the maximal length of payload allowed when sending and receiving WebSocket frames.
 * `send_unmasked`
 : Specifies whether to send out an unmasked WebSocket frames. When it is `true`, unmasked frames are always sent. Default to `false`.
+
+#### set_timeout
+`syntax: wb:set_timeout(ms)`
+
+Identical to the `set_timeout` method of the `resty.websocket.server` objects.
 
 #### send_text
 `syntax: bytes, err = wb:send_text(text)`

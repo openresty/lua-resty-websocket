@@ -6,7 +6,7 @@ use Protocol::WebSocket::Frame;
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 4);
+plan tests => repeat_each() * (blocks() * 4 + 1);
 
 my $pwd = cwd();
 
@@ -630,4 +630,135 @@ received pong: halo, client!: nil
 received: pong: halo, server!: nil
 --- no_error_log
 [error]
+
+
+
+=== TEST 9: client recv timeout
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua '
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            -- ngx.say("uri: ", uri)
+            local ok, err = wb:connect(uri)
+            if not ok then
+                ngx.say("failed to connect: " .. err)
+                return
+            end
+
+            wb:set_timeout(1)
+
+            local data, typ, err = wb:recv_frame()
+            if not data then
+                ngx.say("failed to receive 1st frame: ", err)
+            else
+                ngx.say("1: received: ", data, " (", typ, ")")
+            end
+
+            wb:set_timeout(1000)
+
+            data, typ, err = wb:recv_frame()
+            if not data then
+                ngx.say("failed to receive 2nd frame: ", err)
+            else
+                ngx.say("2: received: ", data, " (", typ, ")")
+            end
+        ';
+    }
+
+    location = /s {
+        content_by_lua '
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            ngx.sleep(0.2)
+
+            local bytes, err = wb:send_text("你好, WebSocket!")
+            if not bytes then
+                ngx.log(ngx.ERR, "failed to send the 1st text: ", err)
+                return ngx.exit(444)
+            end
+        ';
+    }
+--- request
+GET /c
+--- response_body
+failed to receive 1st frame: failed to receive the first 2 bytes: timeout
+2: received: 你好, WebSocket! (text)
+--- error_log
+lua tcp socket read timed out
+--- no_error_log
+[warn]
+
+
+
+=== TEST 10: server recv timeout
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua '
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            -- ngx.say("uri: ", uri)
+            local ok, err = wb:connect(uri)
+            if not ok then
+                ngx.say("failed to connect: " .. err)
+                return
+            end
+
+            ngx.sleep(0.2)
+
+            local bytes, err = wb:send_text("你好, WebSocket!")
+            if not bytes then
+                ngx.say("failed to send the 1st text: ", err)
+                return ngx.exit(444)
+            end
+
+            ngx.say("ok")
+        ';
+    }
+
+    location = /s {
+        content_by_lua '
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            wb:set_timeout(1)
+
+            local data, typ, err = wb:recv_frame()
+            if not data then
+                ngx.log(ngx.ERR, "failed to receive 1st frame: ", err)
+            else
+                ngx.log(ngx.WARN, "1: received: ", data, " (", typ, ")")
+            end
+
+            wb:set_timeout(1000)
+
+            data, typ, err = wb:recv_frame()
+            if not data then
+                ngx.log(ngx.ERR, "failed to receive 2nd frame: ", err)
+            else
+                ngx.log(ngx.WARN, "2: received: ", data, " (", typ, ")")
+            end
+        ';
+    }
+--- request
+GET /c
+--- response_body
+ok
+--- error_log
+failed to receive 1st frame: failed to receive the first 2 bytes: timeout
+2: received: 你好, WebSocket! (text)
+lua tcp socket read timed out
 
