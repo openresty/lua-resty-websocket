@@ -22,6 +22,9 @@ local rshift = bit.rshift
 local band = bit.band
 local setmetatable = setmetatable
 local type = type
+local debug = ngx.config.debug
+local ngx_log = ngx.log
+local ngx_DEBUG = ngx.DEBUG
 
 
 local _M = {
@@ -193,6 +196,10 @@ local function send_frame(self, fin, opcode, payload, max_payload_len)
         return nil, "fatal error already happened"
     end
 
+    if self.closed then
+        return nil, "already closed"
+    end
+
     local sock = self.sock
     if not sock then
         return nil, "not initialized yet"
@@ -219,16 +226,31 @@ function _M.send_binary(self, data)
 end
 
 
-function _M.send_close(self, code, msg)
+local function send_close(self, code, msg)
     local payload
     if code then
         if type(code) ~= "number" or code > 0x7fff then
+            return nil, "bad status code"
         end
         payload = char(band(rshift(code, 8), 0xff), band(code, 0xff))
                         .. (msg or "")
     end
-    return send_frame(self, true, 0x8, payload)
+
+    if debug then
+        ngx_log(ngx_DEBUG, "sending the close frame")
+    end
+
+    local bytes, err = send_frame(self, true, 0x8, payload)
+
+    if not bytes then
+        self.fatal = true
+    end
+
+    self.closed = true
+
+    return bytes, err
 end
+_M.send_close = send_close
 
 
 function _M.send_ping(self, data)
@@ -238,6 +260,27 @@ end
 
 function _M.send_pong(self, data)
     return send_frame(self, true, 0xa, data)
+end
+
+
+function _M.close(self)
+    if self.fatal then
+        return nil, "fatal error already happened"
+    end
+
+    local sock = self.sock
+    if not sock then
+        return nil, "not initialized"
+    end
+
+    if not self.closed then
+        local bytes, err = send_close(self)
+        if not bytes then
+            return nil, "failed to send close frame: " .. err
+        end
+    end
+
+    return sock:close()
 end
 
 

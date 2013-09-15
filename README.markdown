@@ -279,6 +279,11 @@ An optional Lua table can be specified as the last argument to this method to sp
 * `pool`
 : Specifies a custom name for the connection pool being used. If omitted, then the connection pool name will be generated from the string template `<host>:<port>`.
 
+#### close
+`syntax: ok, err = wb:close()`
+
+Closes the current WebSocket connection. If no `close` frame is sent yet, then the `close` frame will be automatically sent.
+
 #### set_keepalive
 `syntax: ok, err = wb:set_keepalive(max_idle_timeout, pool_size)`
 

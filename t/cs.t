@@ -6,7 +6,7 @@ use Protocol::WebSocket::Frame;
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 4 + 10);
+plan tests => repeat_each() * (blocks() * 4 + 12);
 
 my $pwd = cwd();
 
@@ -1194,4 +1194,168 @@ failed to receive 2nd frame: failed to receive the first 2 bytes: closed
 --- error_log
 recv_frame: mask bit: 0
 failed to receive a frame: frame unmasked
+
+
+
+=== TEST 17: close frame (without msg body) + close()
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua '
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            -- ngx.say("uri: ", uri)
+            local ok, err = wb:connect(uri)
+            if not ok then
+                ngx.say("failed to connect: " .. err)
+                return
+            end
+
+            -- print("c: receiving frame")
+
+            local data, typ, err = wb:recv_frame()
+            if not data then
+                ngx.say("failed to receive 1st frame: ", err)
+                return
+            end
+
+            -- print("c: received frame")
+
+            ngx.say("received ", typ, ": ", data, ": ", err)
+
+            local bytes, err = wb:send_close()
+            if not bytes then
+                ngx.say("failed to send frame: ", err)
+                return
+            end
+
+            local ok, err = wb:close()
+            if not ok then
+                ngx.say("failed to close: ", err)
+                return
+            end
+
+            ngx.say("successfully closed the TCP connection")
+        ';
+    }
+
+    location = /s {
+        content_by_lua '
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            -- print("s: sending close")
+
+            local bytes, err = wb:send_close()
+            if not bytes then
+                ngx.log(ngx.ERR, "failed to send the 1st text: ", err)
+                return ngx.exit(444)
+            end
+
+            -- print("s: sent close")
+
+            local data, typ, err = wb:recv_frame()
+            if not data then
+                ngx.log(ngx.ERR, "failed to receive a frame: ", err)
+                return ngx.exit(444)
+            end
+
+            ngx.log(ngx.WARN, "received: ", typ, ": ", data, ": ", err)
+        ';
+    }
+--- request
+GET /c
+--- response_body
+received close: : nil
+successfully closed the TCP connection
+
+--- error_log
+received: close: : nil
+sending the close frame
+--- no_error_log
+[error]
+
+
+
+=== TEST 18: directly calling close() without sending the close frame ourselves
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua '
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            -- ngx.say("uri: ", uri)
+            local ok, err = wb:connect(uri)
+            if not ok then
+                ngx.say("failed to connect: " .. err)
+                return
+            end
+
+            -- print("c: receiving frame")
+
+            local data, typ, err = wb:recv_frame()
+            if not data then
+                ngx.say("failed to receive 1st frame: ", err)
+                return
+            end
+
+            -- print("c: received frame")
+
+            ngx.say("received ", typ, ": ", data, ": ", err)
+
+            local ok, err = wb:close()
+            if not ok then
+                ngx.say("failed to close: ", err)
+                return
+            end
+
+            ngx.say("successfully closed the TCP connection")
+        ';
+    }
+
+    location = /s {
+        content_by_lua '
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            -- print("s: sending close")
+
+            local bytes, err = wb:send_close()
+            if not bytes then
+                ngx.log(ngx.ERR, "failed to send the 1st text: ", err)
+                return ngx.exit(444)
+            end
+
+            -- print("s: sent close")
+
+            local data, typ, err = wb:recv_frame()
+            if not data then
+                ngx.log(ngx.ERR, "failed to receive a frame: ", err)
+                return ngx.exit(444)
+            end
+
+            ngx.log(ngx.WARN, "received: ", typ, ": ", data, ": ", err)
+        ';
+    }
+--- request
+GET /c
+--- response_body
+received close: : nil
+successfully closed the TCP connection
+
+--- error_log
+received: close: : nil
+sending the close frame
+--- no_error_log
+[error]
 
