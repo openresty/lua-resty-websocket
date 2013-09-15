@@ -146,7 +146,7 @@ function _M.connect(self, uri, opts)
     -- FIXME: check for too big response headers
     local header, err, partial = header_reader()
     if not header then
-        return nil, "failed to receive response header: " .. err .. ", partial: " .. (partial or "")
+        return nil, "failed to receive response header: " .. err
     end
 
     -- FIXME: verify the response headers

@@ -14,6 +14,9 @@ local concat = table.concat
 local str_char = string.char
 local rand = math.random
 local type = type
+local debug = ngx.config.debug
+local ngx_log = ngx.log
+local ngx_DEBUG = ngx.DEBUG
 
 
 local _M = {
@@ -58,7 +61,10 @@ function _M.recv_frame(sock, max_payload_len, force_masking)
     end
 
     local mask = band(snd, 0x80) ~= 0
-    -- print("mask bit: ", mask)
+
+    if debug then
+        ngx_log(ngx_DEBUG, "recv_frame: mask bit: ", mask and 1 or 0)
+    end
 
     if force_masking and not mask then
         return nil, nil, "frame unmasked"
