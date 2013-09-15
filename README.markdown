@@ -87,12 +87,200 @@ Modules
 resty.websocket.server
 ----------------------
 
+To load this module, just do this
+
+    local server = require "resty.websocket.server"
+
 ### Methods
+
+#### new
+`syntax: wb, err = server:new()`
+
+`syntax: wb, err = server:new(opts)`
+
+Performs the websocket handshake process on the server side and returns a WebSocket server object.
+
+In case of error, it returns `nil` and a string describing the error.
+
+An optional options table can be specified. The following options are as follows:
+
+* `max_payload_len`
+: Specifies the maximal length of payload allowed when sending and receiving WebSocket frames.
+* `send_masked`
+: Specifies whether to send out masked WebSocket frames. When it is `true`, masked frames are always sent. Default to `false`.
+
+#### send_text
+`syntax: bytes, err = wb:send_text(text)`
+
+Sends the `text` argument out as an unfragmented data frame of the `text` type. Returns the number of bytes that have actually been sent on the TCP level.
+
+In case of errors, returns `nil` and a string describing the error.
+
+#### send_binary
+`syntax: bytes, err = wb:send_binary(data)`
+
+Sends the `data` argument out as an unfragmented data frame of the `binary` type. Returns the number of bytes that have actually been sent on the TCP level.
+
+In case of errors, returns `nil` and a string describing the error.
+
+#### send_ping
+`syntax: bytes, err = wb:send_ping()`
+
+`syntax: bytes, err = wb:send_ping(msg)`
+
+Sends out a `ping` frame with an optional message specified by the `msg` argument. Returns the number of bytes that have actually been sent on the TCP level.
+
+In case of errors, returns `nil` and a string describing the error.
+
+Note that this method does not wait for a pong frame from the remote end.
+
+#### send_pong
+`syntax: bytes, err = wb:send_pong()`
+
+`syntax: bytes, err = wb:send_pong(msg)`
+
+Sends out a `pong` frame with an optional message specified by the `msg` argument. Returns the number of bytes that have actually been sent on the TCP level.
+
+In case of errors, returns `nil` and a string describing the error.
+
+#### send_close
+`syntax: bytes, err = wb:send_close()`
+
+`syntax: bytes, err = wb:send_close(code, msg)`
+
+Sends out a `close` frame with an optional status code and a message.
+
+In case of errors, returns `nil` and a string describing the error.
+
+For a list of valid status code, see the following document:
+
+http://tools.ietf.org/html/rfc6455#section-7.4.1
+
+Note that this method does not wait for a `close` frame from the remote end.
+
+#### send_frame
+`syntax: bytes, err = wb:send_frame(fin, opcode, payload)`
+
+Sends out a raw websocket frame by specifying the `fin` field (boolean value), the opcode, and the payload.
+
+For a list of valid opcode, see
+
+http://tools.ietf.org/html/rfc6455#section-5.2
+
+In case of errors, returns `nil` and a string describing the error.
+
+To control the maximal payload length allowed, you can pass the `max_payload_len` option to the `new` constructor.
+
+To control whether to send masked frames, you can pass `true` to the `send_masked` option in the `new` constructor method. By default, unmasked frames are sent.
+
+#### recv_frame
+`syntax: data, typ, err = wb:recv_frame()`
+
+Receives a WebSocket frame from the wire.
+
+In case of an error, returns two `nil` values and a string describing the error.
+
+The second return value is always the frame type, which could be one of `continuation`, `text`, `binary`, `close`, `ping`, `pong`, or `nil` (for unknown types).
+
+For `close` frames, returns 3 values: the extra status message (which could be an empty string), the string "close", and a Lua number for the status code (if any). For possible closing status codes, see
+
+http://tools.ietf.org/html/rfc6455#section-7.4.1
+
+For other types of frames, just returns the payload and the type.
+
+For fragmented frames, the `err` return value is the Lua string "again".
 
 resty.websocket.client
 ----------------------
 
+To load this module, just do this
+
+    local client = require "resty.websocket.client"
+
 ### Methods
+
+#### new
+`syntax: wb, err = server:new()`
+
+`syntax: wb, err = server:new(opts)`
+
+Performs the websocket handshake process on the client side and returns a WebSocket client object.
+
+In case of error, it returns `nil` and a string describing the error.
+
+An optional options table can be specified. The following options are as follows:
+
+* `max_payload_len`
+: Specifies the maximal length of payload allowed when sending and receiving WebSocket frames.
+* `send_unmasked`
+: Specifies whether to send out an unmasked WebSocket frames. When it is `true`, unmasked frames are always sent. Default to `false`.
+
+#### send_text
+`syntax: bytes, err = wb:send_text(text)`
+
+Identical to the `send_text` method of the `resty.websocket.server` objects.
+
+#### send_binary
+`syntax: bytes, err = wb:send_binary(data)`
+
+Identical to the `send_binary` method of the `resty.websocket.server` objects.
+
+#### send_ping
+`syntax: bytes, err = wb:send_ping()`
+
+`syntax: bytes, err = wb:send_ping(msg)`
+
+Identical to the `send_ping` method of the `resty.websocket.server` objects.
+
+#### send_pong
+`syntax: bytes, err = wb:send_pong()`
+
+`syntax: bytes, err = wb:send_pong(msg)`
+
+Identical to the `send_pong` method of the `resty.websocket.server` objects.
+
+#### send_close
+`syntax: bytes, err = wb:send_close()`
+
+`syntax: bytes, err = wb:send_close(code, msg)`
+
+Identical to the `send_close` method of the `resty.websocket.server` objects.
+
+#### send_frame
+`syntax: bytes, err = wb:send_frame(fin, opcode, payload)`
+
+Identical to the `send_frame` method of the `resty.websocket.server` objects.
+
+To control whether to send unmasked frames, you can pass `true` to the `send_unmasked` option in the `new` constructor method. By default, masked frames are sent.
+
+#### recv_frame
+`syntax: data, typ, err = wb:recv_frame()`
+
+Identical to the `send_frame` method of the `resty.websocket.server` objects.
+
+resty.websocket.protocol
+------------------------
+
+To load this module, just do this
+
+    local protocol = require "resty.websocket.protocol"
+
+### Methods
+
+#### recv_frame
+`syntax: data, typ, err = protocol.recv_frame(socket, max_payload_len, force_masking)`
+
+Receives a WebSocket frame from the wire.
+
+#### build_frame
+`syntax: frame = protocol.build_frame(fin, opcode, payload_len, payload, masking)`
+
+Builds a raw WebSocket frame.
+
+#### send_frame
+`syntax: bytes, err = protocol.send_frame(socket, fin, opcode, payload, max_payload_len, masking)`
+
+Sends a raw WebSocket frame.
 
 Limitations
 ===========
