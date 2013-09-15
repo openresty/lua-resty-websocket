@@ -103,7 +103,7 @@ function _M.connect(self, uri, opts)
             end
         end
 
-        pool = opts.pool
+        local pool = opts.pool
         if pool then
             sock_opts = { pool = pool }
         end
