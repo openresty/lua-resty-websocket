@@ -11,12 +11,14 @@ This library is still under early development and considered experimental.
 Description
 ===========
 
-This Lua library implements WebSocket client and server based on the ngx_lua module:
+This Lua library implements a WebSocket server and client libraries based on the ngx_lua module:
 
 http://wiki.nginx.org/HttpLuaModule
 
 This Lua library takes advantage of ngx_lua's cosocket API, which ensures
 100% nonblocking behavior.
+
+Note that only RFC 6455 is supported. Earlier protocol revisions like "hybi-10", "hybi-07", and "hybi-00" are not and will not be considered.
 
 Synopsis
 ========
