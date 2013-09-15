@@ -113,7 +113,7 @@ function _M.new(self, opts)
     return setmetatable({
         sock = sock,
         max_payload_len = max_payload_len or 65535,
-        sned_masked = send_masked,
+        send_masked = send_masked,
     }, mt)
 end
 
@@ -136,7 +136,7 @@ function _M.recv_frame(self)
 end
 
 
-local function send_frame(self, fin, opcode, payload, max_payload_len)
+local function send_frame(self, fin, opcode, payload)
     if self.fatal then
         return nil, "fatal error already happened"
     end
