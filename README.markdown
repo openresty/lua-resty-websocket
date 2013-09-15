@@ -18,7 +18,7 @@ http://wiki.nginx.org/HttpLuaModule
 This Lua library takes advantage of ngx_lua's cosocket API, which ensures
 100% nonblocking behavior.
 
-Note that only RFC 6455 is supported. Earlier protocol revisions like "hybi-10", "hybi-07", and "hybi-00" are not and will not be considered.
+Note that only [RFC 6455](http://tools.ietf.org/html/rfc6455) is supported. Earlier protocol revisions like "hybi-10", "hybi-07", and "hybi-00" are not and will not be considered.
 
 Synopsis
 ========
