@@ -86,7 +86,7 @@ function _M.connect(self, uri, opts)
         path = "/"
     end
 
-    local proto_header
+    local proto_header, sock_opts
 
     if opts then
         local protos = opts.protocols
@@ -99,13 +99,23 @@ function _M.connect(self, uri, opts)
                 proto_header = "Sec-WebSocket-Protocol: " .. protos .. "\r\n"
             end
         end
+
+        pool = opts.pool
+        if pool then
+            sock_opts = { pool = pool }
+        end
     end
 
     if not proto_header then
         proto_header = ""
     end
 
-    local ok, err = sock:connect(host, port)
+    local ok, err
+    if sock_opts then
+        ok, err = sock:connect(host, port, sock_opts)
+    else
+        ok, err = sock:connect(host, port)
+    end
     if not ok then
         return nil, "failed to connect: " .. err
     end
@@ -134,9 +144,9 @@ function _M.connect(self, uri, opts)
 
     local header_reader = sock:receiveuntil("\r\n\r\n")
     -- FIXME: check for too big response headers
-    local header, err = header_reader()
+    local header, err, partial = header_reader()
     if not header then
-        return nil, "failed to receive response header"
+        return nil, "failed to receive response header: " .. err .. ", partial: " .. (partial or "")
     end
 
     -- FIXME: verify the response headers
@@ -228,6 +238,16 @@ end
 
 function _M.send_pong(self, data)
     return send_frame(self, true, 0xa, data)
+end
+
+
+function _M.set_keepalive(self, ...)
+    local sock = self.sock
+    if not sock then
+        return nil, "not initialized"
+    end
+
+    return sock:setkeepalive(...)
 end
 
 

@@ -6,7 +6,7 @@ use Protocol::WebSocket::Frame;
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 4 + 2);
+plan tests => repeat_each() * (blocks() * 4 + 5);
 
 my $pwd = cwd();
 
@@ -888,4 +888,144 @@ ok
 failed to receive 1st frame: failed to receive the first 2 bytes: timeout
 2: received: 你好, WebSocket! (text)
 lua tcp socket read timed out
+
+
+
+=== TEST 13: setkeepalive
+--- http_config eval: $::HttpConfig
+--- config
+    lua_socket_log_errors off;
+    location = /c {
+        content_by_lua '
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            -- ngx.say("uri: ", uri)
+            local ok, err = wb:connect(uri)
+            if not ok then
+                ok, err = wb:connect(uri)
+                if not ok then
+                    ngx.say("failed to connect: " .. err)
+                    return
+                end
+            end
+
+            data, typ, err = wb:recv_frame()
+            if not data then
+                ngx.say("failed to receive 2nd frame: ", err)
+                return
+            end
+
+            ngx.say("received: ", data, " (", typ, ")")
+
+            local ok, err = wb:set_keepalive()
+            if not ok then
+                ngx.say("failed to set keepalive: ", err)
+                return
+            end
+        ';
+    }
+
+    location = /s {
+        content_by_lua '
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            local bytes, err = wb:send_text("你好, WebSocket!")
+            if not bytes then
+                ngx.log(ngx.ERR, "failed to send the 1st text: ", err)
+                return ngx.exit(444)
+            end
+
+            ngx.sleep(0.1)
+        ';
+    }
+--- request
+GET /c
+--- response_body
+received: 你好, WebSocket! (text)
+--- stap
+F(ngx_http_lua_socket_tcp_setkeepalive) {
+    println("socket tcp set keepalive")
+}
+--- stap_out
+socket tcp set keepalive
+--- no_error_log
+[error]
+[warn]
+
+
+
+=== TEST 14: pool option
+--- http_config eval: $::HttpConfig
+--- config
+    lua_socket_log_errors off;
+    location = /c {
+        content_by_lua '
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            -- ngx.say("uri: ", uri)
+            local ok, err = wb:connect(uri, { pool = "my_conn_pool" })
+            if not ok then
+                ok, err = wb:connect(uri)
+                if not ok then
+                    ngx.say("failed to connect: " .. err)
+                    return
+                end
+            end
+
+            data, typ, err = wb:recv_frame()
+            if not data then
+                ngx.say("failed to receive 2nd frame: ", err)
+                return
+            end
+
+            ngx.say("received: ", data, " (", typ, ")")
+
+            local ok, err = wb:set_keepalive()
+            if not ok then
+                ngx.say("failed to set keepalive: ", err)
+                return
+            end
+        ';
+    }
+
+    location = /s {
+        content_by_lua '
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            local bytes, err = wb:send_text("你好, WebSocket!")
+            if not bytes then
+                ngx.log(ngx.ERR, "failed to send the 1st text: ", err)
+                return ngx.exit(444)
+            end
+
+            ngx.sleep(0.1)
+        ';
+    }
+--- request
+GET /c
+--- response_body
+received: 你好, WebSocket! (text)
+--- stap
+F(ngx_http_lua_socket_tcp_setkeepalive) {
+    println("socket tcp set keepalive")
+}
+--- stap_out
+socket tcp set keepalive
+--- error_log
+lua tcp socket keepalive create connection pool for key "my_conn_pool"
+--- no_error_log
+[error]
+[warn]
 

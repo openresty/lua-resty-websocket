@@ -210,6 +210,37 @@ To load this module, just do this
 
     local client = require "resty.websocket.client"
 
+A simple example to demonstrate the usage:
+
+    local client = require "resty.websocket.client"
+    local wb, err = client:new()
+    local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+    local ok, err = wb:connect(uri)
+    if not ok then
+        ngx.say("failed to connect: " .. err)
+        return
+    end
+
+    local data, typ, err = wb:recv_frame()
+    if not data then
+        ngx.say("failed to receive the frame: ", err)
+        return
+    end
+
+    ngx.say("received: ", data, " (", typ, "): ", err)
+
+    local bytes, err = wb:send_text("copy: " .. data)
+    if not bytes then
+        ngx.say("failed to send frame: ", err)
+        return
+    end
+
+    local bytes, err = wb:send_close()
+    if not bytes then
+        ngx.say("failed to send frame: ", err)
+        return
+    end
+
 ### Methods
 
 #### new
@@ -217,7 +248,7 @@ To load this module, just do this
 
 `syntax: wb, err = server:new(opts)`
 
-Performs the websocket handshake process on the client side and returns a WebSocket client object.
+Instantiates a WebSocket client object.
 
 In case of error, it returns `nil` and a string describing the error.
 
@@ -229,6 +260,33 @@ An optional options table can be specified. The following options are as follows
 : Specifies whether to send out an unmasked WebSocket frames. When it is `true`, unmasked frames are always sent. Default to `false`.
 * `timeout`
 : Specifies the default network timeout threshold in milliseconds. You can change this setting later via the `set_timeout` method call.
+
+#### connect
+`syntax: ok, err = wb:connect("ws://<host>:<port>/<path>")`
+
+`syntax: ok, err = wb:connect("ws://<host>:<port>/<path>", options)`
+
+Connects to the remote WebSocket service port and performs the websocket handshake process on the client side.
+
+Before actually resolving the host name and connecting to the remote backend, this method will always look up the connection pool for matched idle connections created by previous calls of this method.
+
+An optional Lua table can be specified as the last argument to this method to specify various connect options:
+
+* `protocols`
+: Specifies all the subprotocols used for the current WebSocket session. It could be a Lua table holding all the subprotocol names or just a single Lua string.
+* `pool`
+: Specifies a custom name for the connection pool being used. If omitted, then the connection pool name will be generated from the string template `<host>:<port>`.
+
+#### set_keepalive
+`syntax: ok, err = wb:set_keepalive(max_idle_timeout, pool_size)`
+
+Puts the current Redis connection immediately into the ngx_lua cosocket connection pool.
+
+You can specify the max idle timeout (in ms) when the connection is in the pool and the maximal size of the pool every nginx worker process.
+
+In case of success, returns `1`. In case of errors, returns `nil` with a string describing the error.
+
+Only call this method in the place you would have called the `close` method instead. Calling this method will immediately turn the current redis object into the `closed` state. Any subsequent operations other than `connect()` on the current objet will return the `closed` error.
 
 #### set_timeout
 `syntax: wb:set_timeout(ms)`
