@@ -19,6 +19,8 @@ local ngx = ngx
 local read_body = ngx.req.read_body
 local band = bit.band
 local rshift = bit.rshift
+local type = type
+local setmetatable = setmetatable
 -- local print = print
 
 
@@ -27,6 +29,7 @@ local _M = {
 }
 
 local mt = { __index = _M }
+
 
 function _M.new(self, opts)
     if ngx.headers_sent then
@@ -104,10 +107,15 @@ function _M.new(self, opts)
         return nil, err
     end
 
-    local max_payload_len, send_masked
+    local max_payload_len, send_masked, timeout
     if opts then
         max_payload_len = opts.max_payload_len
         send_masked = opts.send_masked
+        timeout = opts.timeout
+
+        if timeout then
+            sock:settimeout(timeout)
+        end
     end
 
     return setmetatable({

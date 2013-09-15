@@ -20,6 +20,8 @@ local str_find = string.find
 local rand = math.random
 local rshift = bit.rshift
 local band = bit.band
+local setmetatable = setmetatable
+local type = type
 
 
 local _M = {
@@ -35,14 +37,15 @@ function _M.new(self, opts)
         return nil, err
     end
 
-    local max_payload_len
+    local max_payload_len, send_unmasked, timeout
     if opts then
         max_payload_len = opts.max_payload_len
-    end
-
-    local send_unmasked
-    if opts then
         send_unmasked = opts.send_unmasked
+        timeout = opts.timeout
+
+        if timeout then
+            sock:settimeout(timeout)
+        end
     end
 
     return setmetatable({

@@ -22,7 +22,11 @@ Synopsis
 ========
 
     local server = require "resty.websocket.server"
-    local wb, err = server:new()
+
+    local wb, err = server:new{
+        timeout = 5000,  -- in milliseconds
+        max_payload_len = 65535,
+    }
     if not wb then
         ngx.log(ngx.ERR, "failed to new websocket: ", err)
         return ngx.exit(444)
@@ -62,6 +66,8 @@ Synopsis
     else
         ngx.log(ngx.INFO, "received a frame of type ", typ, " and payload ", data)
     end
+
+    wb:set_timeout(1000)  -- change the network timeout to 1 second
 
     bytes, err = wb:send_text("Hello world")
     if not bytes then
@@ -108,6 +114,8 @@ An optional options table can be specified. The following options are as follows
 : Specifies the maximal length of payload allowed when sending and receiving WebSocket frames.
 * `send_masked`
 : Specifies whether to send out masked WebSocket frames. When it is `true`, masked frames are always sent. Default to `false`.
+* `timeout`
+: Specifies the network timeout threshold in milliseconds. You can change this setting later via the `set_timeout` method call. Note that this timeout setting does not affect the HTTP response header sending process for the websocket handshake; you need to configure the [send_timeout](http://nginx.org/en/docs/http/ngx_http_core_module.html#send_timeout) directive at the same time.
 
 #### set_timeout
 `syntax: wb:set_timeout(ms)`
@@ -219,6 +227,8 @@ An optional options table can be specified. The following options are as follows
 : Specifies the maximal length of payload allowed when sending and receiving WebSocket frames.
 * `send_unmasked`
 : Specifies whether to send out an unmasked WebSocket frames. When it is `true`, unmasked frames are always sent. Default to `false`.
+* `timeout`
+: Specifies the default network timeout threshold in milliseconds. You can change this setting later via the `set_timeout` method call.
 
 #### set_timeout
 `syntax: wb:set_timeout(ms)`

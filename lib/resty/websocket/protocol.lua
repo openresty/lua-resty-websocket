@@ -13,6 +13,7 @@ local tohex = bit.tohex
 local concat = table.concat
 local str_char = string.char
 local rand = math.random
+local type = type
 
 
 local _M = {
