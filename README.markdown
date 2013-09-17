@@ -450,6 +450,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 See Also
 ========
+* Blog post [WebSockets with OpenResty](https://medium.com/p/1778601c9e05) by Aapo Talvensaari.
 * the ngx_lua module: http://wiki.nginx.org/HttpLuaModule
 * the websocket protocol: http://tools.ietf.org/html/rfc6455
 * the [lua-resty-upload](https://github.com/agentzh/lua-resty-upload) library
