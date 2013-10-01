@@ -383,8 +383,8 @@ Installation
 ============
 
 It is recommended to use the latest [ngx_openresty bundle](http://openresty.org) directly where this library
-is bundled and enabled by default. At least ngx_openresty 1.4.2.9 is required. No extra
-configuration is required.
+is bundled and enabled by default. At least ngx_openresty 1.4.2.9 is required. And you need to enable LuaJIT when building your ngx_openresty
+bundle by passing the `--with-luajit` option to its `./configure` script. No extra Nginx configuration is required.
 
 If you want to use this library with your own Nginx build (with ngx_lua), then you need to
 ensure you are using at least ngx_lua 0.9.0. Also, You need to configure
