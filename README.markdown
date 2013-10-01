@@ -11,9 +11,7 @@ This library is still under early development and considered experimental.
 Description
 ===========
 
-This Lua library implements a WebSocket server and client libraries based on the ngx_lua module:
-
-http://wiki.nginx.org/HttpLuaModule
+This Lua library implements a WebSocket server and client libraries based on the [ngx_lua module](http://wiki.nginx.org/HttpLuaModule).
 
 This Lua library takes advantage of ngx_lua's cosocket API, which ensures
 100% nonblocking behavior.
@@ -384,13 +382,14 @@ each request.
 Installation
 ============
 
-For now, you need to use the latest "master" git branch of ngx_lua:
+It is recommended to use the latest [ngx_openresty bundle](http://openresty.org) directly where this library
+is bundled and enabled by default. At least ngx_openresty 1.4.2.9 is required. No extra
+configuration is required.
 
-https://github.com/chaoslawful/lua-nginx-module/tree/master
-
-You need to configure
-the lua_package_path directive to add the path of your lua-resty-websocket source
-tree to ngx_lua's LUA_PATH search path, as in
+If you want to use this library with your own Nginx build (with ngx_lua), then you need to
+ensure you are using at least ngx_lua 0.9.0. Also, You need to configure
+the [lua_package_path](http://wiki.nginx.org/HttpLuaModule#lua_package_path) directive to
+add the path of your lua-resty-websocket source tree to ngx_lua's Lua module search path, as in
 
     # nginx.conf
     http {
