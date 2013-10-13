@@ -4,6 +4,7 @@
 local bit = require "bit"
 local wbproto = require "resty.websocket.protocol"
 
+local new_tab = wbproto.new_tab
 local _recv_frame = wbproto.recv_frame
 local _send_frame = wbproto.send_frame
 local http_ver = ngx.req.http_version
@@ -24,9 +25,8 @@ local setmetatable = setmetatable
 -- local print = print
 
 
-local _M = {
-    _VERSION = '0.01'
-}
+local _M = new_tab(0, 10)
+_M._VERSION = '0.01'
 
 local mt = { __index = _M }
 

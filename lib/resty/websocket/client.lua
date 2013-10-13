@@ -11,6 +11,7 @@ local bit = require "bit"
 
 local _recv_frame = wbproto.recv_frame
 local _send_frame = wbproto.send_frame
+local new_tab = wbproto.new_tab
 local tcp = ngx.socket.tcp
 local re_match = ngx.re.match
 local encode_base64 = ngx.encode_base64
@@ -27,9 +28,9 @@ local ngx_log = ngx.log
 local ngx_DEBUG = ngx.DEBUG
 
 
-local _M = {
-    _VERSION = '0.01'
-}
+local _M = new_tab(0, 13)
+_M._VERSION = '0.01'
+
 
 local mt = { __index = _M }
 

@@ -25,9 +25,10 @@ if not ok then
 end
 
 
-local _M = {
-    _VERSION = '0.01'
-}
+local _M = new_tab(0, 5)
+
+_M.new_tab = new_tab
+_M._VERSION = '0.01'
 
 
 local types = {
