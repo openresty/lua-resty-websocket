@@ -19,6 +19,12 @@ local ngx_log = ngx.log
 local ngx_DEBUG = ngx.DEBUG
 
 
+local ok, new_tab = pcall(require, "table.new")
+if not ok then
+    new_tab = function (narr, nrec) return {} end
+end
+
+
 local _M = {
     _VERSION = '0.01'
 }
@@ -161,8 +167,8 @@ function _M.recv_frame(sock, max_payload_len, force_masking)
                 code = bor(lshift(fst, 8), snd)
 
                 if payload_len > 2 then
-                    local bytes = {}  -- XXX table.new() or even string.buffer
-                                      -- optimizations
+                    -- TODO string.buffer optimizations
+                    local bytes = new_tab(payload_len - 2, 0)
                     for i = 3, payload_len do
                         bytes[i - 2] = str_char(bxor(byte(data, 4 + i),
                                                      byte(data,
@@ -197,8 +203,8 @@ function _M.recv_frame(sock, max_payload_len, force_masking)
 
     local msg
     if mask then
-        local bytes = {}  -- TODO: optimize this when we have string.buffer
-                          -- in LuaJIT 2.1
+        -- TODO string.buffer optimizations
+        local bytes = new_tab(payload_len, 0)
         for i = 1, payload_len do
             bytes[i] = str_char(bxor(byte(data, 4 + i),
                                      byte(data, (i - 1) % 4 + 1)))
@@ -255,8 +261,8 @@ local function build_frame(fin, opcode, payload_len, payload, masking)
                            band(rshift(key, 8), 0xff),
                            band(key, 0xff))
 
-        local bytes = {}  -- XXX table.new() or even string.buffer
-                          -- optimizations
+        -- TODO string.buffer optimizations
+        local bytes = new_tab(payload_len, 0)
         for i = 1, payload_len do
             bytes[i] = str_char(bxor(byte(payload, i),
                                      byte(masking_key, (i - 1) % 4 + 1)))
