@@ -21,6 +21,7 @@ Note that only [RFC 6455](http://tools.ietf.org/html/rfc6455) is supported. Earl
 Synopsis
 ========
 
+```lua
     local server = require "resty.websocket.server"
 
     local wb, err = server:new{
@@ -86,6 +87,7 @@ Synopsis
         ngx.log(ngx.ERR, "failed to send the close frame: ", err)
         return
     end
+```
 
 Modules
 =======
@@ -95,7 +97,9 @@ resty.websocket.server
 
 To load this module, just do this
 
+```lua
     local server = require "resty.websocket.server"
+```
 
 ### Methods
 
@@ -111,11 +115,11 @@ In case of error, it returns `nil` and a string describing the error.
 An optional options table can be specified. The following options are as follows:
 
 * `max_payload_len`
-: Specifies the maximal length of payload allowed when sending and receiving WebSocket frames.
+    Specifies the maximal length of payload allowed when sending and receiving WebSocket frames.
 * `send_masked`
-: Specifies whether to send out masked WebSocket frames. When it is `true`, masked frames are always sent. Default to `false`.
+    Specifies whether to send out masked WebSocket frames. When it is `true`, masked frames are always sent. Default to `false`.
 * `timeout`
-: Specifies the network timeout threshold in milliseconds. You can change this setting later via the `set_timeout` method call. Note that this timeout setting does not affect the HTTP response header sending process for the websocket handshake; you need to configure the [send_timeout](http://nginx.org/en/docs/http/ngx_http_core_module.html#send_timeout) directive at the same time.
+    Specifies the network timeout threshold in milliseconds. You can change this setting later via the `set_timeout` method call. Note that this timeout setting does not affect the HTTP response header sending process for the websocket handshake; you need to configure the [send_timeout](http://nginx.org/en/docs/http/ngx_http_core_module.html#send_timeout) directive at the same time.
 
 #### set_timeout
 `syntax: wb:set_timeout(ms)`
@@ -208,10 +212,13 @@ resty.websocket.client
 
 To load this module, just do this
 
+```lua
     local client = require "resty.websocket.client"
+```
 
 A simple example to demonstrate the usage:
 
+```lua
     local client = require "resty.websocket.client"
     local wb, err = client:new()
     local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
@@ -240,6 +247,7 @@ A simple example to demonstrate the usage:
         ngx.say("failed to send frame: ", err)
         return
     end
+```
 
 ### Methods
 
@@ -255,11 +263,11 @@ In case of error, it returns `nil` and a string describing the error.
 An optional options table can be specified. The following options are as follows:
 
 * `max_payload_len`
-: Specifies the maximal length of payload allowed when sending and receiving WebSocket frames.
+    Specifies the maximal length of payload allowed when sending and receiving WebSocket frames.
 * `send_unmasked`
-: Specifies whether to send out an unmasked WebSocket frames. When it is `true`, unmasked frames are always sent. Default to `false`. RFC 6455 requires, however, that the client MUST send masked frames to the server, so never set this option to `true` unless you know what you are doing.
+    Specifies whether to send out an unmasked WebSocket frames. When it is `true`, unmasked frames are always sent. Default to `false`. RFC 6455 requires, however, that the client MUST send masked frames to the server, so never set this option to `true` unless you know what you are doing.
 * `timeout`
-: Specifies the default network timeout threshold in milliseconds. You can change this setting later via the `set_timeout` method call.
+    Specifies the default network timeout threshold in milliseconds. You can change this setting later via the `set_timeout` method call.
 
 #### connect
 `syntax: ok, err = wb:connect("ws://<host>:<port>/<path>")`
@@ -273,9 +281,9 @@ Before actually resolving the host name and connecting to the remote backend, th
 An optional Lua table can be specified as the last argument to this method to specify various connect options:
 
 * `protocols`
-: Specifies all the subprotocols used for the current WebSocket session. It could be a Lua table holding all the subprotocol names or just a single Lua string.
+    Specifies all the subprotocols used for the current WebSocket session. It could be a Lua table holding all the subprotocol names or just a single Lua string.
 * `pool`
-: Specifies a custom name for the connection pool being used. If omitted, then the connection pool name will be generated from the string template `<host>:<port>`.
+    Specifies a custom name for the connection pool being used. If omitted, then the connection pool name will be generated from the string template `<host>:<port>`.
 
 #### close
 `syntax: ok, err = wb:close()`
@@ -346,7 +354,9 @@ resty.websocket.protocol
 
 To load this module, just do this
 
+```lua
     local protocol = require "resty.websocket.protocol"
+```
 
 ### Methods
 
@@ -372,7 +382,9 @@ By default the underlying [ngx_lua](http://wiki.nginx.org/HttpLuaModule) module
 does error logging when socket errors happen. If you are already doing proper error
 handling in your own Lua code, then you are recommended to disable this automatic error logging by turning off [ngx_lua](http://wiki.nginx.org/HttpLuaModule)'s [lua_socket_log_errors](http://wiki.nginx.org/HttpLuaModule#lua_socket_log_errors) directive, that is,
 
+```nginx
     lua_socket_log_errors off;
+```
 
 Limitations
 ===========
@@ -397,18 +409,22 @@ bundle by passing the `--with-luajit` option to its `./configure` script. No ext
 
 If you want to use this library with your own Nginx build (with ngx_lua), then you need to
 ensure you are using at least ngx_lua 0.9.0. Also, You need to configure
-the [lua_package_path](http://wiki.nginx.org/HttpLuaModule#lua_package_path) directive to
+the [lua_package_path](https://github.com/chaoslawful/lua-nginx-module#lua_package_path) directive to
 add the path of your lua-resty-websocket source tree to ngx_lua's Lua module search path, as in
 
+```nginx
     # nginx.conf
     http {
         lua_package_path "/path/to/lua-resty-websocket/lib/?.lua;;";
         ...
     }
+```
 
 and then load the library in Lua:
 
+```lua
     local server = require "resty.websocket.server"
+```
 
 TODO
 ====
