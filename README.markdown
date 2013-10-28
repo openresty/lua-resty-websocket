@@ -173,10 +173,13 @@ In case of error, it returns `nil` and a string describing the error.
 An optional options table can be specified. The following options are as follows:
 
 * `max_payload_len`
+
     Specifies the maximal length of payload allowed when sending and receiving WebSocket frames.
 * `send_masked`
+
     Specifies whether to send out masked WebSocket frames. When it is `true`, masked frames are always sent. Default to `false`.
 * `timeout`
+
     Specifies the network timeout threshold in milliseconds. You can change this setting later via the `set_timeout` method call. Note that this timeout setting does not affect the HTTP response header sending process for the websocket handshake; you need to configure the [send_timeout](http://nginx.org/en/docs/http/ngx_http_core_module.html#send_timeout) directive at the same time.
 
 [Back to TOC](#table-of-contents)
@@ -343,10 +346,13 @@ In case of error, it returns `nil` and a string describing the error.
 An optional options table can be specified. The following options are as follows:
 
 * `max_payload_len`
+
     Specifies the maximal length of payload allowed when sending and receiving WebSocket frames.
 * `send_unmasked`
+
     Specifies whether to send out an unmasked WebSocket frames. When it is `true`, unmasked frames are always sent. Default to `false`. RFC 6455 requires, however, that the client MUST send masked frames to the server, so never set this option to `true` unless you know what you are doing.
 * `timeout`
+
     Specifies the default network timeout threshold in milliseconds. You can change this setting later via the `set_timeout` method call.
 
 [Back to TOC](#table-of-contents)
@@ -363,8 +369,10 @@ Before actually resolving the host name and connecting to the remote backend, th
 An optional Lua table can be specified as the last argument to this method to specify various connect options:
 
 * `protocols`
+
     Specifies all the subprotocols used for the current WebSocket session. It could be a Lua table holding all the subprotocol names or just a single Lua string.
 * `pool`
+
     Specifies a custom name for the connection pool being used. If omitted, then the connection pool name will be generated from the string template `<host>:<port>`.
 
 [Back to TOC](#table-of-contents)
