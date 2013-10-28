@@ -3,6 +3,56 @@ Name
 
 lua-resty-websocket - Lua WebSocket implementation for the ngx_lua module
 
+Table of Contents
+=================
+
+* [Name](#name)
+* [Status](#status)
+* [Description](#description)
+* [Synopsis](#synopsis)
+* [Modules](#modules)
+    * [resty.websocket.server](#restywebsocketserver)
+        * [Methods](#methods)
+            * [new](#new)
+            * [set_timeout](#set_timeout)
+            * [send_text](#send_text)
+            * [send_binary](#send_binary)
+            * [send_ping](#send_ping)
+            * [send_pong](#send_pong)
+            * [send_close](#send_close)
+            * [send_frame](#send_frame)
+            * [recv_frame](#recv_frame)
+    * [resty.websocket.client](#restywebsocketclient)
+        * [Methods](#methods)
+            * [client:new](#clientnew)
+            * [client:connect](#clientconnect)
+            * [client:close](#clientclose)
+            * [client:set_keepalive](#clientset_keepalive)
+            * [client:set_timeout](#clientset_timeout)
+            * [client:send_text](#clientsend_text)
+            * [client:send_binary](#clientsend_binary)
+            * [client:send_ping](#clientsend_ping)
+            * [client:send_pong](#clientsend_pong)
+            * [client:send_close](#clientsend_close)
+            * [client:send_frame](#clientsend_frame)
+            * [client:recv_frame](#clientrecv_frame)
+    * [resty.websocket.protocol](#restywebsocketprotocol)
+        * [Methods](#methods)
+            * [recv_frame](#recv_frame)
+            * [build_frame](#build_frame)
+            * [send_frame](#send_frame)
+* [Automatic Error Logging](#automatic-error-logging)
+* [Limitations](#limitations)
+* [Installation](#installation)
+* [TODO](#todo)
+* [Community](#community)
+    * [English Mailing List](#english-mailing-list)
+    * [Chinese Mailing List](#chinese-mailing-list)
+* [Bugs and Patches](#bugs-and-patches)
+* [Author](#author)
+* [Copyright and License](#copyright-and-license)
+* [See Also](#see-also)
+
 Status
 ======
 
@@ -89,8 +139,12 @@ Synopsis
     end
 ```
 
+[Back to TOC](#table-of-contents)
+
 Modules
 =======
+
+[Back to TOC](#table-of-contents)
 
 resty.websocket.server
 ----------------------
@@ -101,7 +155,11 @@ To load this module, just do this
     local server = require "resty.websocket.server"
 ```
 
+[Back to TOC](#table-of-contents)
+
 ### Methods
+
+[Back to TOC](#table-of-contents)
 
 #### new
 `syntax: wb, err = server:new()`
@@ -121,10 +179,14 @@ An optional options table can be specified. The following options are as follows
 * `timeout`
     Specifies the network timeout threshold in milliseconds. You can change this setting later via the `set_timeout` method call. Note that this timeout setting does not affect the HTTP response header sending process for the websocket handshake; you need to configure the [send_timeout](http://nginx.org/en/docs/http/ngx_http_core_module.html#send_timeout) directive at the same time.
 
+[Back to TOC](#table-of-contents)
+
 #### set_timeout
 `syntax: wb:set_timeout(ms)`
 
 Sets the timeout delay (in milliseconds) for the network-related operations.
+
+[Back to TOC](#table-of-contents)
 
 #### send_text
 `syntax: bytes, err = wb:send_text(text)`
@@ -133,12 +195,16 @@ Sends the `text` argument out as an unfragmented data frame of the `text` type. 
 
 In case of errors, returns `nil` and a string describing the error.
 
+[Back to TOC](#table-of-contents)
+
 #### send_binary
 `syntax: bytes, err = wb:send_binary(data)`
 
 Sends the `data` argument out as an unfragmented data frame of the `binary` type. Returns the number of bytes that have actually been sent on the TCP level.
 
 In case of errors, returns `nil` and a string describing the error.
+
+[Back to TOC](#table-of-contents)
 
 #### send_ping
 `syntax: bytes, err = wb:send_ping()`
@@ -151,6 +217,8 @@ In case of errors, returns `nil` and a string describing the error.
 
 Note that this method does not wait for a pong frame from the remote end.
 
+[Back to TOC](#table-of-contents)
+
 #### send_pong
 `syntax: bytes, err = wb:send_pong()`
 
@@ -159,6 +227,8 @@ Note that this method does not wait for a pong frame from the remote end.
 Sends out a `pong` frame with an optional message specified by the `msg` argument. Returns the number of bytes that have actually been sent on the TCP level.
 
 In case of errors, returns `nil` and a string describing the error.
+
+[Back to TOC](#table-of-contents)
 
 #### send_close
 `syntax: bytes, err = wb:send_close()`
@@ -175,6 +245,8 @@ http://tools.ietf.org/html/rfc6455#section-7.4.1
 
 Note that this method does not wait for a `close` frame from the remote end.
 
+[Back to TOC](#table-of-contents)
+
 #### send_frame
 `syntax: bytes, err = wb:send_frame(fin, opcode, payload)`
 
@@ -189,6 +261,8 @@ In case of errors, returns `nil` and a string describing the error.
 To control the maximal payload length allowed, you can pass the `max_payload_len` option to the `new` constructor.
 
 To control whether to send masked frames, you can pass `true` to the `send_masked` option in the `new` constructor method. By default, unmasked frames are sent.
+
+[Back to TOC](#table-of-contents)
 
 #### recv_frame
 `syntax: data, typ, err = wb:recv_frame()`
@@ -206,6 +280,8 @@ http://tools.ietf.org/html/rfc6455#section-7.4.1
 For other types of frames, just returns the payload and the type.
 
 For fragmented frames, the `err` return value is the Lua string "again".
+
+[Back to TOC](#table-of-contents)
 
 resty.websocket.client
 ----------------------
@@ -249,9 +325,13 @@ A simple example to demonstrate the usage:
     end
 ```
 
+[Back to TOC](#table-of-contents)
+
 ### Methods
 
-#### new
+[Back to TOC](#table-of-contents)
+
+#### client:new
 `syntax: wb, err = server:new()`
 
 `syntax: wb, err = server:new(opts)`
@@ -269,7 +349,9 @@ An optional options table can be specified. The following options are as follows
 * `timeout`
     Specifies the default network timeout threshold in milliseconds. You can change this setting later via the `set_timeout` method call.
 
-#### connect
+[Back to TOC](#table-of-contents)
+
+#### client:connect
 `syntax: ok, err = wb:connect("ws://<host>:<port>/<path>")`
 
 `syntax: ok, err = wb:connect("ws://<host>:<port>/<path>", options)`
@@ -285,12 +367,16 @@ An optional Lua table can be specified as the last argument to this method to sp
 * `pool`
     Specifies a custom name for the connection pool being used. If omitted, then the connection pool name will be generated from the string template `<host>:<port>`.
 
-#### close
+[Back to TOC](#table-of-contents)
+
+#### client:close
 `syntax: ok, err = wb:close()`
 
 Closes the current WebSocket connection. If no `close` frame is sent yet, then the `close` frame will be automatically sent.
 
-#### set_keepalive
+[Back to TOC](#table-of-contents)
+
+#### client:set_keepalive
 `syntax: ok, err = wb:set_keepalive(max_idle_timeout, pool_size)`
 
 Puts the current Redis connection immediately into the ngx_lua cosocket connection pool.
@@ -301,53 +387,71 @@ In case of success, returns `1`. In case of errors, returns `nil` with a string 
 
 Only call this method in the place you would have called the `close` method instead. Calling this method will immediately turn the current redis object into the `closed` state. Any subsequent operations other than `connect()` on the current objet will return the `closed` error.
 
-#### set_timeout
+[Back to TOC](#table-of-contents)
+
+#### client:set_timeout
 `syntax: wb:set_timeout(ms)`
 
 Identical to the `set_timeout` method of the `resty.websocket.server` objects.
 
-#### send_text
+[Back to TOC](#table-of-contents)
+
+#### client:send_text
 `syntax: bytes, err = wb:send_text(text)`
 
-Identical to the `send_text` method of the `resty.websocket.server` objects.
+Identical to the [send_text](#send_text) method of the `resty.websocket.server` objects.
 
-#### send_binary
+[Back to TOC](#table-of-contents)
+
+#### client:send_binary
 `syntax: bytes, err = wb:send_binary(data)`
 
-Identical to the `send_binary` method of the `resty.websocket.server` objects.
+Identical to the [send_binary](#send_binary) method of the `resty.websocket.server` objects.
 
-#### send_ping
+[Back to TOC](#table-of-contents)
+
+#### client:send_ping
 `syntax: bytes, err = wb:send_ping()`
 
 `syntax: bytes, err = wb:send_ping(msg)`
 
-Identical to the `send_ping` method of the `resty.websocket.server` objects.
+Identical to the [send_ping](#send_ping) method of the `resty.websocket.server` objects.
 
-#### send_pong
+[Back to TOC](#table-of-contents)
+
+#### client:send_pong
 `syntax: bytes, err = wb:send_pong()`
 
 `syntax: bytes, err = wb:send_pong(msg)`
 
-Identical to the `send_pong` method of the `resty.websocket.server` objects.
+Identical to the [send_pong](#send_pong) method of the `resty.websocket.server` objects.
 
-#### send_close
+[Back to TOC](#table-of-contents)
+
+#### client:send_close
 `syntax: bytes, err = wb:send_close()`
 
 `syntax: bytes, err = wb:send_close(code, msg)`
 
-Identical to the `send_close` method of the `resty.websocket.server` objects.
+Identical to the [send_close](#send_close) method of the `resty.websocket.server` objects.
 
-#### send_frame
+[Back to TOC](#table-of-contents)
+
+#### client:send_frame
 `syntax: bytes, err = wb:send_frame(fin, opcode, payload)`
 
-Identical to the `send_frame` method of the `resty.websocket.server` objects.
+Identical to the [send_frame](#send_frame) method of the `resty.websocket.server` objects.
 
 To control whether to send unmasked frames, you can pass `true` to the `send_unmasked` option in the `new` constructor method. By default, masked frames are sent.
 
-#### recv_frame
+[Back to TOC](#table-of-contents)
+
+#### client:recv_frame
 `syntax: data, typ, err = wb:recv_frame()`
 
-Identical to the `send_frame` method of the `resty.websocket.server` objects.
+Identical to the [recv_frame](#recv_frame) method of the `resty.websocket.server` objects.
+
+[Back to TOC](#table-of-contents)
 
 resty.websocket.protocol
 ------------------------
@@ -358,22 +462,32 @@ To load this module, just do this
     local protocol = require "resty.websocket.protocol"
 ```
 
+[Back to TOC](#table-of-contents)
+
 ### Methods
+
+[Back to TOC](#table-of-contents)
 
 #### recv_frame
 `syntax: data, typ, err = protocol.recv_frame(socket, max_payload_len, force_masking)`
 
 Receives a WebSocket frame from the wire.
 
+[Back to TOC](#table-of-contents)
+
 #### build_frame
 `syntax: frame = protocol.build_frame(fin, opcode, payload_len, payload, masking)`
 
 Builds a raw WebSocket frame.
 
+[Back to TOC](#table-of-contents)
+
 #### send_frame
 `syntax: bytes, err = protocol.send_frame(socket, fin, opcode, payload, max_payload_len, masking)`
 
 Sends a raw WebSocket frame.
+
+[Back to TOC](#table-of-contents)
 
 Automatic Error Logging
 =======================
@@ -385,6 +499,8 @@ handling in your own Lua code, then you are recommended to disable this automati
 ```nginx
     lua_socket_log_errors off;
 ```
+
+[Back to TOC](#table-of-contents)
 
 Limitations
 ===========
@@ -399,6 +515,8 @@ result in bad race conditions when concurrent requests are trying to use the sam
 You should always initiate `resty.websocket` objects in function local
 variables or in the `ngx.ctx` table. These places all have their own data copies for
 each request.
+
+[Back to TOC](#table-of-contents)
 
 Installation
 ============
@@ -426,21 +544,31 @@ and then load the library in Lua:
     local server = require "resty.websocket.server"
 ```
 
+[Back to TOC](#table-of-contents)
+
 TODO
 ====
 
+[Back to TOC](#table-of-contents)
+
 Community
 =========
+
+[Back to TOC](#table-of-contents)
 
 English Mailing List
 --------------------
 
 The [openresty-en](https://groups.google.com/group/openresty-en) mailing list is for English speakers.
 
+[Back to TOC](#table-of-contents)
+
 Chinese Mailing List
 --------------------
 
 The [openresty](https://groups.google.com/group/openresty) mailing list is for Chinese speakers.
+
+[Back to TOC](#table-of-contents)
 
 Bugs and Patches
 ================
@@ -450,10 +578,14 @@ Please report bugs or submit patches by
 1. creating a ticket on the [GitHub Issue Tracker](http://github.com/agentzh/lua-resty-websocket/issues),
 1. or posting to the [OpenResty community](http://wiki.nginx.org/HttpLuaModule#Community).
 
+[Back to TOC](#table-of-contents)
+
 Author
 ======
 
 Yichun "agentzh" Zhang (章亦春) <agentzh@gmail.com>, CloudFlare Inc.
+
+[Back to TOC](#table-of-contents)
 
 Copyright and License
 =====================
@@ -472,6 +604,8 @@ Redistribution and use in source and binary forms, with or without modification,
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+[Back to TOC](#table-of-contents)
+
 See Also
 ========
 * Blog post [WebSockets with OpenResty](https://medium.com/p/1778601c9e05) by Aapo Talvensaari.
@@ -481,4 +615,6 @@ See Also
 * the [lua-resty-redis](https://github.com/agentzh/lua-resty-redis) library
 * the [lua-resty-memcached](https://github.com/agentzh/lua-resty-memcached) library
 * the [lua-resty-mysql](https://github.com/agentzh/lua-resty-mysql) library
+
+[Back to TOC](#table-of-contents)
 
