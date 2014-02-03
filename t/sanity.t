@@ -30,6 +30,7 @@ __DATA__
 --- config
     location = /t {
         content_by_lua '
+            collectgarbage()
             local websocket = require "resty.websocket.server"
             local wb, err = websocket:new()
             if not wb then
