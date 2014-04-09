@@ -143,12 +143,14 @@ function _M.recv_frame(sock, max_payload_len, force_masking)
     -- print("rest: ", rest)
 
     local data
-    if true or rest > 0 then
+    if rest > 0 then
         data, err = sock:receive(rest)
         if not data then
             return nil, nil, "failed to read masking-len and payload: "
                              .. (err or "unknown")
         end
+    else
+        data = ""
     end
 
     -- print("received rest")
