@@ -18,6 +18,7 @@ our $HttpConfig = qq{
 $ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
 $ENV{TEST_NGINX_REDIS_PORT} ||= 6379;
 
+check_accum_error_log();
 no_long_string();
 #no_diff();
 
