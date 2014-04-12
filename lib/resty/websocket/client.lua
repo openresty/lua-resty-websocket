@@ -1,4 +1,4 @@
--- Copyright (C) 2013 Yichun Zhang (agentzh)
+-- Copyright (C) Yichun Zhang (agentzh)
 
 
 -- FIXME: this library is very rough and is currently just for testing
@@ -29,7 +29,7 @@ local ngx_DEBUG = ngx.DEBUG
 
 
 local _M = new_tab(0, 13)
-_M._VERSION = '0.01'
+_M._VERSION = '0.03'
 
 
 local mt = { __index = _M }

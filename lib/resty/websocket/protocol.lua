@@ -1,3 +1,6 @@
+-- Copyright (C) Yichun Zhang (agentzh)
+
+
 local bit = require "bit"
 
 
@@ -28,7 +31,7 @@ end
 local _M = new_tab(0, 5)
 
 _M.new_tab = new_tab
-_M._VERSION = '0.01'
+_M._VERSION = '0.03'
 
 
 local types = {

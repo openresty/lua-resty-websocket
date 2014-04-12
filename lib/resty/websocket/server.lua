@@ -1,4 +1,4 @@
--- Copyright (C) 2013 Yichun Zhang (agentzh)
+-- Copyright (C) Yichun Zhang (agentzh)
 
 
 local bit = require "bit"
@@ -26,7 +26,7 @@ local setmetatable = setmetatable
 
 
 local _M = new_tab(0, 10)
-_M._VERSION = '0.01'
+_M._VERSION = '0.03'
 
 local mt = { __index = _M }
 
