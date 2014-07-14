@@ -96,11 +96,11 @@ function _M.connect(self, uri, opts)
         local protos = opts.protocols
         if protos then
             if type(protos) == "table" then
-                proto_header = "Sec-WebSocket-Protocol: "
-                               .. concat(protos, ",") .. "\r\n"
+                proto_header = "\r\nSec-WebSocket-Protocol: "
+                               .. concat(protos, ",")
 
             else
-                proto_header = "Sec-WebSocket-Protocol: " .. protos .. "\r\n"
+                proto_header = "\r\nSec-WebSocket-Protocol: " .. protos
             end
         end
 
