@@ -1187,9 +1187,9 @@ recv_frame: mask bit: 1
     }
 --- request
 GET /c
---- response_body
-1: received: 你好, WebSocket! (text)
-failed to receive 2nd frame: failed to receive the first 2 bytes: closed
+--- response_body_like eval
+qr/^1: received: 你好, WebSocket! \(text\)
+failed to receive 2nd frame: failed to receive the first 2 bytes: (?:closed|connection reset by peer)$/
 --- no_error_log
 [warn]
 --- error_log
