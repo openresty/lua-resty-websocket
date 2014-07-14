@@ -371,6 +371,9 @@ An optional Lua table can be specified as the last argument to this method to sp
 * `protocols`
 
     Specifies all the subprotocols used for the current WebSocket session. It could be a Lua table holding all the subprotocol names or just a single Lua string.
+* `origin`
+
+    Specifies the value of the `Origin` request header.
 * `pool`
 
     Specifies a custom name for the connection pool being used. If omitted, then the connection pool name will be generated from the string template `<host>:<port>`.

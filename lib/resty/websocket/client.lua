@@ -90,7 +90,7 @@ function _M.connect(self, uri, opts)
         path = "/"
     end
 
-    local proto_header, sock_opts
+    local proto_header, origin_header, sock_opts
 
     if opts then
         local protos = opts.protocols
@@ -102,6 +102,11 @@ function _M.connect(self, uri, opts)
             else
                 proto_header = "\r\nSec-WebSocket-Protocol: " .. protos
             end
+        end
+
+        local origin = opts.origin
+        if origin then
+            origin_header = "\r\nOrigin: " .. origin
         end
 
         local pool = opts.pool
@@ -139,6 +144,7 @@ function _M.connect(self, uri, opts)
                 .. "\r\nSec-WebSocket-Key: " .. key
                 .. proto_header
                 .. "\r\nSec-WebSocket-Version: 13"
+                .. (origin_header or "")
                 .. "\r\nConnection: Upgrade\r\n\r\n"
 
     local bytes, err = sock:send(req)

@@ -6,7 +6,7 @@ use Protocol::WebSocket::Frame;
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 4 + 14);
+plan tests => repeat_each() * (blocks() * 4 + 15);
 
 my $pwd = cwd();
 
@@ -1430,6 +1430,46 @@ Host: 127.0.0.1:7986\r
 Sec-WebSocket-Key: y7KXwBSpVrxtkR0O+bQt+Q==\r
 Sec-WebSocket-Protocol: xml,json\r
 Sec-WebSocket-Version: 13\r
+Connection: Upgrade\r
+\r
+"
+--- tcp_reply: blah
+--- response_body
+failed to connect: failed to receive response header: closed
+--- no_error_log
+[error]
+[warn]
+
+
+
+=== TEST 21: client handshake (origin)
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua '
+            local client = require "resty.websocket.client"
+            math.randomseed(0)
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:7986/"
+            -- ngx.say("uri: ", uri)
+            local ok, err = wb:connect(uri, { origin = "test.com" })
+            if not ok then
+                ngx.say("failed to connect: " .. err)
+                return
+            end
+        ';
+    }
+
+--- request
+GET /c
+--- tcp_listen: 7986
+--- tcp_query eval
+"GET / HTTP/1.1\r
+Upgrade: websocket\r
+Host: 127.0.0.1:7986\r
+Sec-WebSocket-Key: y7KXwBSpVrxtkR0O+bQt+Q==\r
+Sec-WebSocket-Version: 13\r
+Origin: test.com\r
 Connection: Upgrade\r
 \r
 "
