@@ -60,7 +60,7 @@ function _M.new(self, opts)
 end
 
 
-function _M.connect(self, uri, opts)
+function _M.connect(self, uri,org, opts)
     local sock = self.sock
     if not sock then
         return nil, "not initialized"
@@ -90,17 +90,21 @@ function _M.connect(self, uri, opts)
         path = "/"
     end
 
-    local proto_header, sock_opts
+    local more_header, sock_opts
+    more_header = ""
+    if org then
+	    more_header = "\r\nOrigin: ".. org
+    end
 
     if opts then
         local protos = opts.protocols
         if protos then
             if type(protos) == "table" then
-                proto_header = "Sec-WebSocket-Protocol: "
-                               .. concat(protos, ",") .. "\r\n"
+                more_header = more_header.."\r\nSec-WebSocket-Protocol: "
+                               .. concat(protos, ",")
 
             else
-                proto_header = "Sec-WebSocket-Protocol: " .. protos .. "\r\n"
+                more_header = more_header.."\r\nSec-WebSocket-Protocol: " .. protos
             end
         end
 
@@ -108,10 +112,6 @@ function _M.connect(self, uri, opts)
         if pool then
             sock_opts = { pool = pool }
         end
-    end
-
-    if not proto_header then
-        proto_header = ""
     end
 
     local ok, err
@@ -137,7 +137,7 @@ function _M.connect(self, uri, opts)
     local req = "GET " .. path .. " HTTP/1.1\r\nUpgrade: websocket\r\nHost: "
                 .. host .. ":" .. port
                 .. "\r\nSec-WebSocket-Key: " .. key
-                .. proto_header
+                .. more_header
                 .. "\r\nSec-WebSocket-Version: 13"
                 .. "\r\nConnection: Upgrade\r\n\r\n"
 
