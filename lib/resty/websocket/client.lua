@@ -115,10 +115,6 @@ function _M.connect(self, uri, opts)
         end
     end
 
-    if not proto_header then
-        proto_header = ""
-    end
-
     local ok, err
     if sock_opts then
         ok, err = sock:connect(host, port, sock_opts)
@@ -128,6 +124,16 @@ function _M.connect(self, uri, opts)
     if not ok then
         return nil, "failed to connect: " .. err
     end
+    
+    -- check if need initialization:
+    local count,err = sock:getreusedtimes()
+    if not count then
+    	return nil, "failed to get reuse:" .. err
+    end
+    if count > 0 then
+        return 1
+    end
+   
 
     -- do the websocket handshake:
 
@@ -142,7 +148,7 @@ function _M.connect(self, uri, opts)
     local req = "GET " .. path .. " HTTP/1.1\r\nUpgrade: websocket\r\nHost: "
                 .. host .. ":" .. port
                 .. "\r\nSec-WebSocket-Key: " .. key
-                .. proto_header
+		.. (proto_header or "")
                 .. "\r\nSec-WebSocket-Version: 13"
                 .. (origin_header or "")
                 .. "\r\nConnection: Upgrade\r\n\r\n"
