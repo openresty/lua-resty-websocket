@@ -125,6 +125,17 @@ function _M.connect(self, uri, opts)
         return nil, "failed to connect: " .. err
     end
 
+    -- check for connections from pool:
+
+    local count,err = sock:getreusedtimes()
+    if not count then
+        return nil, "failed to get reused times: " .. err
+    end
+    if count > 0 then
+        -- being a reused connection (must have done handshake)
+        return 1
+    end
+
     -- do the websocket handshake:
 
     local bytes = char(rand(256) - 1, rand(256) - 1, rand(256) - 1,

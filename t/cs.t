@@ -6,7 +6,7 @@ use Protocol::WebSocket::Frame;
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 4 + 15);
+plan tests => repeat_each() * (blocks() * 4 + 16);
 
 my $pwd = cwd();
 
@@ -895,37 +895,43 @@ lua tcp socket read timed out
 
 
 
-=== TEST 13: setkeepalive
+=== TEST 13: reused upstream websocket connections (set_keepalive)
 --- http_config eval: $::HttpConfig
 --- config
-    lua_socket_log_errors off;
     location = /c {
         content_by_lua '
             local client = require "resty.websocket.client"
             local wb, err = client:new()
-            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
-            -- ngx.say("uri: ", uri)
-            local ok, err = wb:connect(uri)
-            if not ok then
-                ok, err = wb:connect(uri)
+
+            for i = 1, 3 do
+                local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+                -- ngx.say("uri: ", uri)
+                local ok, err = wb:connect(uri)
                 if not ok then
                     ngx.say("failed to connect: " .. err)
                     return
                 end
-            end
 
-            data, typ, err = wb:recv_frame()
-            if not data then
-                ngx.say("failed to receive 2nd frame: ", err)
-                return
-            end
+                local data = "hello " .. i
+                local bytes, err = wb:send_text(data)
+                if not bytes then
+                    ngx.say("failed to send frame: ", err)
+                    return
+                end
 
-            ngx.say("received: ", data, " (", typ, ")")
+                data, typ, err = wb:recv_frame()
+                if not data then
+                    ngx.say("failed to receive 2nd frame: ", err)
+                    return
+                end
 
-            local ok, err = wb:set_keepalive()
-            if not ok then
-                ngx.say("failed to set keepalive: ", err)
-                return
+                ngx.say("received: ", data, " (", typ, ")")
+
+                local ok, err = wb:set_keepalive()
+                if not ok then
+                    ngx.say("failed to recycle conn: ", err)
+                    return
+                end
             end
         ';
     }
@@ -939,28 +945,35 @@ lua tcp socket read timed out
                 return ngx.exit(444)
             end
 
-            local bytes, err = wb:send_text("你好, WebSocket!")
-            if not bytes then
-                ngx.log(ngx.ERR, "failed to send the 1st text: ", err)
-                return ngx.exit(444)
-            end
+            while true do
+                local data, typ, err = wb:recv_frame()
+                if not data then
+                    ngx.log(ngx.ERR, "failed to receive a frame: ", err)
+                    return ngx.exit(444)
+                end
 
-            ngx.sleep(0.1)
+                -- send it back!
+                bytes, err = wb:send_text(data)
+                if not bytes then
+                    ngx.log(ngx.ERR, "failed to send the 2nd text: ", err)
+                    return ngx.exit(444)
+                end
+            end
         ';
     }
 --- request
 GET /c
 --- response_body
-received: 你好, WebSocket! (text)
---- stap
-F(ngx_http_lua_socket_tcp_setkeepalive) {
-    println("socket tcp set keepalive")
-}
---- stap_out
-socket tcp set keepalive
+received: hello 1 (text)
+received: hello 2 (text)
+received: hello 3 (text)
+
 --- no_error_log
 [error]
 [warn]
+--- error_log
+recv_frame: mask bit: 0
+recv_frame: mask bit: 1
 
 
 
@@ -983,6 +996,12 @@ socket tcp set keepalive
                 end
             end
 
+            data, typ, err = wb:send_text("hello websocket")
+            if not data then
+                ngx.say("failed to receive 2nd frame: ", err)
+                return
+            end
+
             data, typ, err = wb:recv_frame()
             if not data then
                 ngx.say("failed to receive 2nd frame: ", err)
@@ -1008,10 +1027,18 @@ socket tcp set keepalive
                 return ngx.exit(444)
             end
 
-            local bytes, err = wb:send_text("你好, WebSocket!")
-            if not bytes then
-                ngx.log(ngx.ERR, "failed to send the 1st text: ", err)
-                return ngx.exit(444)
+            while true do
+                local data, err = wb:recv_frame()
+                if not data then
+                    ngx.log(ngx.ERR, "failed to recv text: ", err)
+                    return ngx.exit(444)
+                end
+
+                local bytes, err = wb:send_text(data)
+                if not bytes then
+                    ngx.log(ngx.ERR, "failed to send the 1st text: ", err)
+                    return ngx.exit(444)
+                end
             end
 
             ngx.sleep(0.1)
@@ -1020,7 +1047,7 @@ socket tcp set keepalive
 --- request
 GET /c
 --- response_body
-received: 你好, WebSocket! (text)
+received: hello websocket (text)
 --- stap
 F(ngx_http_lua_socket_tcp_setkeepalive) {
     println("socket tcp set keepalive")
