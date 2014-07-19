@@ -190,6 +190,7 @@ GET /c
 === TEST 3: close frame (without msg body)
 --- http_config eval: $::HttpConfig
 --- config
+    lingering_close always;
     location = /c {
         content_by_lua '
             local client = require "resty.websocket.client"
@@ -219,6 +220,8 @@ GET /c
                 ngx.say("failed to send frame: ", err)
                 return
             end
+
+            wb:recv_frame()  -- receive the close frame
         ';
     }
 
@@ -248,6 +251,8 @@ GET /c
             end
 
             ngx.log(ngx.WARN, "received: ", typ, ": ", data, ": ", err)
+
+            wb:send_close()
         ';
     }
 --- request
@@ -985,11 +990,11 @@ recv_frame: mask bit: 1
 --- http_config eval: $::HttpConfig
 --- config
     lua_socket_log_errors off;
-    location = /c {
+    location = /c2 {
         content_by_lua '
             local client = require "resty.websocket.client"
             local wb, err = client:new()
-            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s2"
             -- ngx.say("uri: ", uri)
             local ok, err = wb:connect(uri, { pool = "my_conn_pool" })
             if not ok then
@@ -1022,7 +1027,7 @@ recv_frame: mask bit: 1
         ';
     }
 
-    location = /s {
+    location = /s2 {
         content_by_lua '
             local server = require "resty.websocket.server"
             local wb, err = server:new()
@@ -1034,7 +1039,7 @@ recv_frame: mask bit: 1
             while true do
                 local data, err = wb:recv_frame()
                 if not data then
-                    ngx.log(ngx.ERR, "failed to recv text: ", err)
+                    -- ngx.log(ngx.ERR, "failed to recv text: ", err)
                     return ngx.exit(444)
                 end
 
@@ -1044,12 +1049,10 @@ recv_frame: mask bit: 1
                     return ngx.exit(444)
                 end
             end
-
-            ngx.sleep(0.1)
         ';
     }
 --- request
-GET /c
+GET /c2
 --- response_body
 received: hello websocket (text)
 --- stap
