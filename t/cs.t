@@ -1210,6 +1210,8 @@ recv_frame: mask bit: 1
                 ngx.log(ngx.ERR, "failed to send the 2nd text: ", err)
                 return ngx.exit(444)
             end
+
+            ngx.sleep(0.001)  -- lingering close
         ';
     }
 --- request
