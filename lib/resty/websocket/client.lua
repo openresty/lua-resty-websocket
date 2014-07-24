@@ -66,7 +66,7 @@ function _M.connect(self, uri, opts)
         return nil, "not initialized"
     end
 
-    local m, err = re_match(uri, [[^ws://([^:/]+)(?::(\d+))?(.*)]], "jo")
+    local m, err = re_match(uri, [[^(wss?)://([^:/]+)(?::(\d+))?(.*)]], "jo")
     if not m then
         if err then
             return nil, "failed to match the uri: " .. err
@@ -75,9 +75,10 @@ function _M.connect(self, uri, opts)
         return nil, "bad websocket uri"
     end
 
-    local host = m[1]
-    local port = m[2]
-    local path = m[3]
+    local scheme = m[1]
+    local host = m[2]
+    local port = m[3]
+    local path = m[4]
 
     -- ngx.say("host: ", host)
     -- ngx.say("port: ", port)
@@ -90,7 +91,7 @@ function _M.connect(self, uri, opts)
         path = "/"
     end
 
-    local proto_header, origin_header, sock_opts
+    local ssl_verify, proto_header, origin_header, sock_opts = false
 
     if opts then
         local protos = opts.protocols
@@ -113,6 +114,10 @@ function _M.connect(self, uri, opts)
         if pool then
             sock_opts = { pool = pool }
         end
+
+        if opts.ssl_verify then
+            ssl_verify = opts.ssl_verify
+        end
     end
 
     local ok, err
@@ -123,6 +128,13 @@ function _M.connect(self, uri, opts)
     end
     if not ok then
         return nil, "failed to connect: " .. err
+    end
+
+    if scheme == "wss" then
+        local session, err = sock:sslhandshake(session, host, ssl_verify)
+        if not session then
+            return nil, "ssl handshake failed: " .. err
+        end
     end
 
     -- check for connections from pool:
