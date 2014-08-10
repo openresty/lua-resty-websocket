@@ -537,8 +537,9 @@ is bundled and enabled by default. At least ngx_openresty 1.4.2.9 is required. A
 bundle by passing the `--with-luajit` option to its `./configure` script. No extra Nginx configuration is required.
 
 If you want to use this library with your own Nginx build (with ngx_lua), then
-you need to ensure you are using at least ngx_lua 0.9.0 and
-[lua-bitop](http://bitop.luajit.org/) library. Also, You need to configure the
+you need to ensure you are using at least ngx_lua 0.9.0
+(and [lua-bitop](http://bitop.luajit.org/) library if you are not using LuaJIT).
+Also, You need to configure the
 [lua_package_path](https://github.com/chaoslawful/lua-nginx-module#lua_package_path)
 directive to add the path of your lua-resty-websocket source tree to ngx_lua's
 Lua module search path, as in
