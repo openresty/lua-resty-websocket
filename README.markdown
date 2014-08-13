@@ -335,9 +335,9 @@ A simple example to demonstrate the usage:
 [Back to TOC](#table-of-contents)
 
 #### client:new
-`syntax: wb, err = server:new()`
+`syntax: wb, err = client:new()`
 
-`syntax: wb, err = server:new(opts)`
+`syntax: wb, err = client:new(opts)`
 
 Instantiates a WebSocket client object.
 
