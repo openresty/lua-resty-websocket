@@ -1784,7 +1784,7 @@ $::TestCertificate"
     }
 --- udp_listen: 1953
 --- udp_reply eval
-q((sub {
+sub {
     # Get DNS request ID from passed UDP datagram
     my $dns_id = unpack("n", shift);
     # Set name and encode it
@@ -1805,7 +1805,7 @@ q((sub {
     my $data = pack("CCCC", @addr);
     $s .= $name. pack("nnNn", 1, 1, 1, 4) . $data;
     return $s;
-}))
+}
 
 --- request
 GET /c
