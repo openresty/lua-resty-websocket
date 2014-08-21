@@ -4,6 +4,15 @@ use Test::Nginx::Socket::Lua;
 use Cwd qw(cwd);
 use Protocol::WebSocket::Frame;
 
+sub read_file {
+    my $infile = shift;
+    open my $in, $infile
+        or die "cannot open $infile for reading: $!";
+    my $cert = do { local $/; <$in> };
+    close $in;
+    $cert;
+}
+
 repeat_each(2);
 
 plan tests => repeat_each() * (blocks() * 4 + 16);
@@ -14,6 +23,9 @@ our $HttpConfig = qq{
     lua_package_path "$pwd/lib/?.lua;;";
     lua_package_cpath "/usr/local/openresty-debug/lualib/?.so;/usr/local/openresty/lualib/?.so;;";
 };
+
+our $TestCertificate = read_file("t/cert/test.crt");
+our $TestCertificateKey = read_file("t/cert/test.key");
 
 $ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
 $ENV{TEST_NGINX_REDIS_PORT} ||= 6379;
@@ -1518,4 +1530,389 @@ failed to connect: failed to receive response header: closed
 --- no_error_log
 [error]
 [warn]
+
+
+
+=== TEST 22: SSL with keepalive
+--- http_config eval: $::HttpConfig
+--- config
+    listen 1985 ssl;
+    server_name test.com;
+    ssl_certificate ../html/test.crt;
+    ssl_certificate_key ../html/test.key;
+    server_tokens off;
+
+    location = /c {
+        content_by_lua '
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+
+            for i = 1, 3 do
+                local uri = "wss://127.0.0.1:1985/s"
+                local ok, err = wb:connect(uri)
+                if not ok then
+                    ngx.say("failed to connect: " .. err)
+                    return
+                end
+
+                local data = "hello " .. i
+                local bytes, err = wb:send_text(data)
+                if not bytes then
+                    ngx.say("failed to send frame: ", err)
+                    return
+                end
+
+                data, typ, err = wb:recv_frame()
+                if not data then
+                    ngx.say("failed to receive 2nd frame: ", err)
+                    return
+                end
+
+                ngx.say("received: ", data, " (", typ, ")")
+
+                local ok, err = wb:set_keepalive()
+                if not ok then
+                    ngx.say("failed to recycle conn: ", err)
+                    return
+                end
+            end
+        ';
+    }
+
+    location = /s {
+        content_by_lua '
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            while true do
+                local data, typ, err = wb:recv_frame()
+                if not data then
+                    -- ngx.log(ngx.ERR, "failed to receive a frame: ", err)
+                    return ngx.exit(444)
+                end
+
+                -- send it back!
+                bytes, err = wb:send_text(data)
+                if not bytes then
+                    ngx.log(ngx.ERR, "failed to send the 2nd text: ", err)
+                    return ngx.exit(444)
+                end
+            end
+        ';
+    }
+--- request
+GET /c
+--- response_body
+received: hello 1 (text)
+received: hello 2 (text)
+received: hello 3 (text)
+
+--- no_error_log
+[error]
+[warn]
+
+--- user_files eval
+">>> test.key
+$::TestCertificateKey
+>>> test.crt
+$::TestCertificate"
+
+--- timeout: 3
+
+
+
+=== TEST 23: SSL without keepalive
+--- http_config eval: $::HttpConfig
+--- config
+    listen 1985 ssl;
+    server_name test.com;
+    ssl_certificate ../html/test.crt;
+    ssl_certificate_key ../html/test.key;
+    server_tokens off;
+
+    location = /c {
+        content_by_lua '
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+
+            local uri = "wss://127.0.0.1:1985/s"
+            local ok, err = wb:connect(uri)
+            if not ok then
+                ngx.say("failed to connect: " .. err)
+                return
+            end
+
+            local data = "hello"
+            local bytes, err = wb:send_text(data)
+            if not bytes then
+                ngx.say("failed to send frame: ", err)
+                return
+            end
+
+            data, typ, err = wb:recv_frame()
+            if not data then
+                ngx.say("failed to receive 2nd frame: ", err)
+                return
+            end
+
+            ngx.say("received: ", data, " (", typ, ")")
+
+            local ok, err = wb:close()
+            if not ok then
+                ngx.say("failed to close conn: ", err)
+                return
+            end
+        ';
+    }
+
+    location = /s {
+        content_by_lua '
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            local data, typ, err = wb:recv_frame()
+            if not data then
+                -- ngx.log(ngx.ERR, "failed to receive a frame: ", err)
+                return ngx.exit(444)
+            end
+
+            -- send it back!
+            bytes, err = wb:send_text(data)
+            if not bytes then
+                ngx.log(ngx.ERR, "failed to send the 2nd text: ", err)
+                return ngx.exit(444)
+            end
+        ';
+    }
+--- request
+GET /c
+--- response_body
+received: hello (text)
+
+--- no_error_log
+[error]
+[warn]
+
+--- user_files eval
+">>> test.key
+$::TestCertificateKey
+>>> test.crt
+$::TestCertificate"
+
+--- timeout: 3
+
+
+
+=== TEST 24: SSL with ssl_verify
+--- http_config eval: $::HttpConfig
+--- config
+    listen 1985 ssl;
+    server_name test.com;
+    ssl_certificate ../html/test.crt;
+    ssl_certificate_key ../html/test.key;
+    server_tokens off;
+
+    resolver 127.0.0.1:1953;
+    lua_ssl_trusted_certificate ../html/test.crt;
+    lua_ssl_verify_depth 1;
+
+    location = /c {
+        content_by_lua '
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+
+            local uri = "wss://test.com:1985/s"
+            local ok, err = wb:connect(uri, {ssl_verify = true})
+            if not ok then
+                ngx.say("failed to connect: " .. err)
+                return
+            end
+
+            local data = "hello"
+            local bytes, err = wb:send_text(data)
+            if not bytes then
+                ngx.say("failed to send frame: ", err)
+                return
+            end
+
+            data, typ, err = wb:recv_frame()
+            if not data then
+                ngx.say("failed to receive 2nd frame: ", err)
+                return
+            end
+
+            ngx.say("received: ", data, " (", typ, ")")
+
+            local ok, err = wb:close()
+            if not ok then
+                ngx.say("failed to close conn: ", err)
+                return
+            end
+        ';
+    }
+
+    location = /s {
+        content_by_lua '
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            local data, typ, err = wb:recv_frame()
+            if not data then
+                -- ngx.log(ngx.ERR, "failed to receive a frame: ", err)
+                return ngx.exit(444)
+            end
+
+            -- send it back!
+            bytes, err = wb:send_text(data)
+            if not bytes then
+                ngx.log(ngx.ERR, "failed to send the 2nd text: ", err)
+                return ngx.exit(444)
+            end
+        ';
+    }
+--- udp_listen: 1953
+--- udp_reply eval
+q((sub {
+    # Get DNS request ID from passed UDP datagram
+    my $dns_id = unpack("n", shift);
+    # Set name and encode it
+    my $name = "test.com";
+    $name =~ s/([^.]+)\.?/chr(length($1)) . $1/ge;
+    $name .= "\0";
+    my $s = '';
+    $s .= pack("n", $dns_id);
+    # DNS response flags, hardcoded
+    my $flags = (1 << 15) + (0 << 11) + (0 << 10) + (0 << 9) + (1 << 8) + (1 << 7) + 0;
+    $flags = pack("n", $flags);
+    $s .= $flags;
+    $s .= pack("nnnn", 1, 1, 0, 0);
+    $s .= $name;
+    $s .= pack("nn", 1, 1);
+    # Set response address and pack it
+    my @addr = split /\./, "127.0.0.1";
+    my $data = pack("CCCC", @addr);
+    $s .= $name. pack("nnNn", 1, 1, 1, 4) . $data;
+    return $s;
+}))
+
+--- request
+GET /c
+--- response_body
+received: hello (text)
+
+--- no_error_log
+[error]
+[warn]
+
+--- user_files eval
+">>> test.key
+$::TestCertificateKey
+>>> test.crt
+$::TestCertificate"
+
+--- timeout: 3
+
+
+
+=== TEST 25: SSL without ssl_verify
+--- http_config eval: $::HttpConfig
+--- config
+    listen 1985 ssl;
+    server_name test.com;
+    ssl_certificate ../html/test.crt;
+    ssl_certificate_key ../html/test.key;
+    server_tokens off;
+
+    location = /c {
+        content_by_lua '
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+
+            for i = 1, 3 do
+                local uri = "wss://127.0.0.1:1985/s"
+                local ok, err = wb:connect(uri, {ssl_verify = false})
+                if not ok then
+                    ngx.say("failed to connect: " .. err)
+                    return
+                end
+
+                local data = "hello " .. i
+                local bytes, err = wb:send_text(data)
+                if not bytes then
+                    ngx.say("failed to send frame: ", err)
+                    return
+                end
+
+                data, typ, err = wb:recv_frame()
+                if not data then
+                    ngx.say("failed to receive 2nd frame: ", err)
+                    return
+                end
+
+                ngx.say("received: ", data, " (", typ, ")")
+
+                local ok, err = wb:set_keepalive()
+                if not ok then
+                    ngx.say("failed to close conn: ", err)
+                    return
+                end
+            end
+        ';
+    }
+
+    location = /s {
+        content_by_lua '
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            while true do
+                local data, typ, err = wb:recv_frame()
+                if not data then
+                    -- ngx.log(ngx.ERR, "failed to receive a frame: ", err)
+                    return ngx.exit(444)
+                end
+
+                -- send it back!
+                bytes, err = wb:send_text(data)
+                if not bytes then
+                    ngx.log(ngx.ERR, "failed to send the 2nd text: ", err)
+                    return ngx.exit(444)
+                end
+            end
+        ';
+    }
+--- request
+GET /c
+--- response_body
+received: hello 1 (text)
+received: hello 2 (text)
+received: hello 3 (text)
+
+--- no_error_log
+[error]
+[warn]
+
+--- user_files eval
+">>> test.key
+$::TestCertificateKey
+>>> test.crt
+$::TestCertificate"
+
+--- timeout: 3
 

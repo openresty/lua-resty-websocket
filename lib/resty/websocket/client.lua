@@ -131,7 +131,7 @@ function _M.connect(self, uri, opts)
     end
 
     if scheme == "wss" then
-        local session, err = sock:sslhandshake(session, host, ssl_verify)
+        local session, err = sock:sslhandshake(nil, host, ssl_verify)
         if not session then
             return nil, "ssl handshake failed: " .. err
         end
