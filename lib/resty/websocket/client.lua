@@ -26,7 +26,14 @@ local type = type
 local debug = ngx.config.debug
 local ngx_log = ngx.log
 local ngx_DEBUG = ngx.DEBUG
+local ssl_support = true
 
+if not ngx.config
+    or not ngx.config.ngx_lua_version
+    or ngx.config.ngx_lua_version < 9011
+then
+    ssl_support = false
+end
 
 local _M = new_tab(0, 13)
 _M._VERSION = '0.04'
@@ -116,7 +123,10 @@ function _M.connect(self, uri, opts)
         end
 
         if opts.ssl_verify then
-            ssl_verify = opts.ssl_verify
+            if not ssl_support then
+                return nil, "ngx_lua 0.9.11+ required for SSL sockets"
+            end
+            ssl_verify = true
         end
     end
 
@@ -131,7 +141,10 @@ function _M.connect(self, uri, opts)
     end
 
     if scheme == "wss" then
-        local session, err = sock:sslhandshake(nil, host, ssl_verify)
+        if not ssl_support then
+            return nil, "ngx_lua 0.9.11+ required for SSL sockets"
+        end
+        local session, err = sock:sslhandshake(false, host, ssl_verify)
         if not session then
             return nil, "ssl handshake failed: " .. err
         end

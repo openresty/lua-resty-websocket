@@ -1826,7 +1826,83 @@ $::TestCertificate"
 
 
 
-=== TEST 25: SSL without ssl_verify
+=== TEST 25: SSL with ssl_verify (handshake failed)
+--- http_config eval: $::HttpConfig
+--- config
+    listen 1985 ssl;
+    server_name test.com;
+    ssl_certificate ../html/test.crt;
+    ssl_certificate_key ../html/test.key;
+    server_tokens off;
+
+    resolver 127.0.0.1:1953;
+
+    location = /c {
+        content_by_lua '
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+
+            local uri = "wss://test.com:1985/s"
+            local ok, err = wb:connect(uri, {ssl_verify = true})
+            if not ok then
+                ngx.say("failed to connect: " .. err)
+                return
+            end
+        ';
+    }
+
+    location = /s {
+        content_by_lua '
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+        ';
+    }
+--- udp_listen: 1953
+--- udp_reply eval
+sub {
+    # Get DNS request ID from passed UDP datagram
+    my $dns_id = unpack("n", shift);
+    # Set name and encode it
+    my $name = "test.com";
+    $name =~ s/([^.]+)\.?/chr(length($1)) . $1/ge;
+    $name .= "\0";
+    my $s = '';
+    $s .= pack("n", $dns_id);
+    # DNS response flags, hardcoded
+    my $flags = (1 << 15) + (0 << 11) + (0 << 10) + (0 << 9) + (1 << 8) + (1 << 7) + 0;
+    $flags = pack("n", $flags);
+    $s .= $flags;
+    $s .= pack("nnnn", 1, 1, 0, 0);
+    $s .= $name;
+    $s .= pack("nn", 1, 1);
+    # Set response address and pack it
+    my @addr = split /\./, "127.0.0.1";
+    my $data = pack("CCCC", @addr);
+    $s .= $name. pack("nnNn", 1, 1, 1, 4) . $data;
+    return $s;
+}
+
+--- request
+GET /c
+
+--- error_log
+lua ssl certificate verify error: (18: self signed certificate)
+
+--- user_files eval
+">>> test.key
+$::TestCertificateKey
+>>> test.crt
+$::TestCertificate"
+
+--- timeout: 3
+
+
+
+=== TEST 26: SSL without ssl_verify
 --- http_config eval: $::HttpConfig
 --- config
     listen 1985 ssl;
