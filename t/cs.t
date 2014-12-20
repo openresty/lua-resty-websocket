@@ -4,15 +4,6 @@ use Test::Nginx::Socket::Lua;
 use Cwd qw(cwd);
 use Protocol::WebSocket::Frame;
 
-sub read_file {
-    my $infile = shift;
-    open my $in, $infile
-        or die "cannot open $infile for reading: $!";
-    my $cert = do { local $/; <$in> };
-    close $in;
-    $cert;
-}
-
 repeat_each(2);
 
 plan tests => repeat_each() * (blocks() * 4 + 16);
@@ -23,9 +14,6 @@ our $HttpConfig = qq{
     lua_package_path "$pwd/lib/?.lua;;";
     lua_package_cpath "/usr/local/openresty-debug/lualib/?.so;/usr/local/openresty/lualib/?.so;;";
 };
-
-our $TestCertificate = read_file("t/cert/test.crt");
-our $TestCertificateKey = read_file("t/cert/test.key");
 
 $ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
 $ENV{TEST_NGINX_REDIS_PORT} ||= 6379;
@@ -1538,8 +1526,8 @@ failed to connect: failed to receive response header: closed
 --- config
     listen 1985 ssl;
     server_name test.com;
-    ssl_certificate ../html/test.crt;
-    ssl_certificate_key ../html/test.key;
+    ssl_certificate ../../cert/test.crt;
+    ssl_certificate_key ../../cert/test.key;
     server_tokens off;
 
     location = /c {
@@ -1615,12 +1603,6 @@ received: hello 3 (text)
 [error]
 [warn]
 
---- user_files eval
-">>> test.key
-$::TestCertificateKey
->>> test.crt
-$::TestCertificate"
-
 --- timeout: 3
 
 
@@ -1630,8 +1612,8 @@ $::TestCertificate"
 --- config
     listen 1985 ssl;
     server_name test.com;
-    ssl_certificate ../html/test.crt;
-    ssl_certificate_key ../html/test.key;
+    ssl_certificate ../../cert/test.crt;
+    ssl_certificate_key ../../cert/test.key;
     server_tokens off;
 
     location = /c {
@@ -1701,12 +1683,6 @@ received: hello (text)
 [error]
 [warn]
 
---- user_files eval
-">>> test.key
-$::TestCertificateKey
->>> test.crt
-$::TestCertificate"
-
 --- timeout: 3
 
 
@@ -1716,12 +1692,12 @@ $::TestCertificate"
 --- config
     listen 1985 ssl;
     server_name test.com;
-    ssl_certificate ../html/test.crt;
-    ssl_certificate_key ../html/test.key;
+    ssl_certificate ../../cert/test.crt;
+    ssl_certificate_key ../../cert/test.key;
     server_tokens off;
 
     resolver 127.0.0.1:1953;
-    lua_ssl_trusted_certificate ../html/test.crt;
+    lua_ssl_trusted_certificate ../../cert/test.crt;
     lua_ssl_verify_depth 1;
 
     location = /c {
@@ -1816,12 +1792,6 @@ received: hello (text)
 [error]
 [warn]
 
---- user_files eval
-">>> test.key
-$::TestCertificateKey
->>> test.crt
-$::TestCertificate"
-
 --- timeout: 3
 
 
@@ -1831,8 +1801,8 @@ $::TestCertificate"
 --- config
     listen 1985 ssl;
     server_name test.com;
-    ssl_certificate ../html/test.crt;
-    ssl_certificate_key ../html/test.key;
+    ssl_certificate ../../cert/test.crt;
+    ssl_certificate_key ../../cert/test.key;
     server_tokens off;
 
     resolver 127.0.0.1:1953;
@@ -1892,12 +1862,6 @@ GET /c
 --- error_log
 lua ssl certificate verify error: (18: self signed certificate)
 
---- user_files eval
-">>> test.key
-$::TestCertificateKey
->>> test.crt
-$::TestCertificate"
-
 --- timeout: 3
 
 
@@ -1907,8 +1871,8 @@ $::TestCertificate"
 --- config
     listen 1985 ssl;
     server_name test.com;
-    ssl_certificate ../html/test.crt;
-    ssl_certificate_key ../html/test.key;
+    ssl_certificate ../../cert/test.crt;
+    ssl_certificate_key ../../cert/test.key;
     server_tokens off;
 
     location = /c {
@@ -1983,12 +1947,6 @@ received: hello 3 (text)
 --- no_error_log
 [error]
 [warn]
-
---- user_files eval
-">>> test.key
-$::TestCertificateKey
->>> test.crt
-$::TestCertificate"
 
 --- timeout: 3
 

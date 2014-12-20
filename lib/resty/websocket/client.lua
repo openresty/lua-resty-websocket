@@ -144,8 +144,8 @@ function _M.connect(self, uri, opts)
         if not ssl_support then
             return nil, "ngx_lua 0.9.11+ required for SSL sockets"
         end
-        local session, err = sock:sslhandshake(false, host, ssl_verify)
-        if not session then
+        ok, err = sock:sslhandshake(false, host, ssl_verify)
+        if not ok then
             return nil, "ssl handshake failed: " .. err
         end
     end
