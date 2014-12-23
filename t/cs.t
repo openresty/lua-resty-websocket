@@ -1522,6 +1522,7 @@ failed to connect: failed to receive response header: closed
 
 
 === TEST 22: SSL with keepalive
+--- no_check_leak
 --- http_config eval: $::HttpConfig
 --- config
     listen 12345 ssl;
@@ -1608,6 +1609,7 @@ received: hello 3 (text)
 
 
 === TEST 23: SSL without keepalive
+--- no_check_leak
 --- http_config eval: $::HttpConfig
 --- config
     listen 12345 ssl;
@@ -1688,6 +1690,7 @@ received: hello (text)
 
 
 === TEST 24: SSL with ssl_verify
+--- no_check_leak
 --- http_config eval: $::HttpConfig
 --- config
     listen 12345 ssl;
@@ -1799,6 +1802,7 @@ received: hello (text)
 
 
 === TEST 25: SSL with ssl_verify (handshake failed)
+--- no_check_leak
 --- http_config eval: $::HttpConfig
 --- config
     listen 12345 ssl;
@@ -1870,6 +1874,7 @@ lua ssl certificate verify error: (18: self signed certificate)
 
 
 === TEST 26: SSL without ssl_verify
+--- no_check_leak
 --- http_config eval: $::HttpConfig
 --- config
     listen 12345 ssl;
