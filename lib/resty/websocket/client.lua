@@ -230,7 +230,7 @@ function _M.recv_frame(self)
 end
 
 
-local function send_frame(self, fin, opcode, payload, max_payload_len)
+local function send_frame(self, fin, opcode, payload)
     if self.fatal then
         return nil, "fatal error already happened"
     end
