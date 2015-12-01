@@ -901,6 +901,7 @@ ok
 failed to receive 1st frame: failed to receive the first 2 bytes: timeout
 2: received: 你好, WebSocket! (text)
 lua tcp socket read timed out
+--- timeout: 6
 
 
 
@@ -1150,6 +1151,7 @@ GET /c
 recv_frame: mask bit: 0
 --- error_log
 recv_frame: mask bit: 1
+--- timeout: 6
 
 
 
