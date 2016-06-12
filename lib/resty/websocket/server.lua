@@ -174,6 +174,11 @@ end
 _M.send_frame = send_frame
 
 
+function _M.send_continue(self, data)
+    return send_frame(self, true, 0x0, data)
+end
+
+
 function _M.send_text(self, data)
     return send_frame(self, true, 0x1, data)
 end
