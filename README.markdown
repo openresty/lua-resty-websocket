@@ -386,7 +386,7 @@ An optional Lua table can be specified as the last argument to this method to sp
     Specifies whether to perform SSL certificate verfication during the
 SSL handshake if the `wss://` scheme is used.
 
-The SSL connection mode (`wss://`) requires at least ngx_lua 0.9.11 or OpenResty 1.7.4.1.
+The SSL connection mode (`wss://`) requires at least `ngx_lua` 0.9.11 or OpenResty 1.7.4.1.
 
 [Back to TOC](#table-of-contents)
 
@@ -400,13 +400,13 @@ Closes the current WebSocket connection. If no `close` frame is sent yet, then t
 #### client:set_keepalive
 `syntax: ok, err = wb:set_keepalive(max_idle_timeout, pool_size)`
 
-Puts the current Redis connection immediately into the ngx_lua cosocket connection pool.
+Puts the current WebSocket connection immediately into the `ngx_lua` cosocket connection pool.
 
 You can specify the max idle timeout (in ms) when the connection is in the pool and the maximal size of the pool every nginx worker process.
 
 In case of success, returns `1`. In case of errors, returns `nil` with a string describing the error.
 
-Only call this method in the place you would have called the `close` method instead. Calling this method will immediately turn the current redis object into the `closed` state. Any subsequent operations other than `connect()` on the current objet will return the `closed` error.
+Only call this method in the place you would have called the `close` method instead. Calling this method will immediately turn the current WebSocket object into the `closed` state. Any subsequent operations other than `connect()` on the current objet will return the `closed` error.
 
 [Back to TOC](#table-of-contents)
 
