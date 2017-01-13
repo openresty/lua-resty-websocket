@@ -546,6 +546,8 @@ It is recommended to use the latest [OpenResty bundle](http://openresty.org) dir
 is bundled and enabled by default. At least OpenResty 1.4.2.9 is required. And you need to enable LuaJIT when building your OpenResty
 bundle by passing the `--with-luajit` option to its `./configure` script. No extra Nginx configuration is required.
 
+It is also available as Debian package [lua-nginx-websocket](https://tracker.debian.org/pkg/lua-nginx-websocket).
+
 If you want to use this library with your own Nginx build (with ngx_lua), then
 you need to ensure you are using at least ngx_lua 0.9.0
 (and [lua-bitop](http://bitop.luajit.org/) library if you are not using LuaJIT).
@@ -566,6 +568,12 @@ and then load the library in Lua:
 
 ```lua
     local server = require "resty.websocket.server"
+```
+
+if you are using Debian package:
+
+```lua
+    local server = require "nginx.websocket.server"
 ```
 
 [Back to TOC](#table-of-contents)
