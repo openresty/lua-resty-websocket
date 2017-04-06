@@ -460,3 +460,8 @@
    fun:_dl_sysdep_start
    fun:_dl_start
 }
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   obj:*
+}
