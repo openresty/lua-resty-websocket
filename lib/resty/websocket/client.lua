@@ -98,9 +98,17 @@ function _M.connect(self, uri, opts)
         path = "/"
     end
 
-    local ssl_verify, proto_header, origin_header, sock_opts = false
+    local ssl_verify, proto_header, origin_header, custom_header, sock_opts = false
 
     if opts then
+        local headers = opts.headers
+        if headers then
+            custom_header = ""
+            for field,value in pairs(headers) do
+                custom_header = custom_header .. "\r\n" .. field .. ": " .. value
+            end
+        end
+
         local protos = opts.protocols
         if protos then
             if type(protos) == "table" then
@@ -173,6 +181,7 @@ function _M.connect(self, uri, opts)
     local key = encode_base64(bytes)
     local req = "GET " .. path .. " HTTP/1.1\r\nUpgrade: websocket\r\nHost: "
                 .. host .. ":" .. port
+                .. (custom_header or "")
                 .. "\r\nSec-WebSocket-Key: " .. key
                 .. (proto_header or "")
                 .. "\r\nSec-WebSocket-Version: 13"
