@@ -104,7 +104,7 @@ function _M.connect(self, uri, opts)
         local headers = opts.headers
         if headers then
             custom_header = ""
-            for field,value in pairs(headers) do
+            for field, value in ipairs(headers) do
                 custom_header = custom_header .. "\r\n" .. field .. ": " .. value
             end
         end
