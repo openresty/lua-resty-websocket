@@ -378,6 +378,9 @@ An optional Lua table can be specified as the last argument to this method to sp
 * `origin`
 
     Specifies the value of the `Origin` request header.
+* `headers`
+
+    Specifies a table of request headers.
 * `pool`
 
     Specifies a custom name for the connection pool being used. If omitted, then the connection pool name will be generated from the string template `<host>:<port>`.
