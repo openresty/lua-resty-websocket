@@ -14,6 +14,7 @@ local _send_frame = wbproto.send_frame
 local new_tab = wbproto.new_tab
 local tcp = ngx.socket.tcp
 local re_match = ngx.re.match
+local re_find = ngx.re.find
 local encode_base64 = ngx.encode_base64
 local concat = table.concat
 local char = string.char
@@ -91,7 +92,11 @@ function _M.connect(self, uri, opts)
     -- ngx.say("port: ", port)
 
     if not port then
-        port = 80
+        if re_find(uri, "^wss://", "jo") then
+            port = 443
+        else
+            port = 80
+        end
     end
 
     if path == "" then
