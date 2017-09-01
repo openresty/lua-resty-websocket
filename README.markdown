@@ -383,7 +383,7 @@ An optional Lua table can be specified as the last argument to this method to sp
     Specifies a custom name for the connection pool being used. If omitted, then the connection pool name will be generated from the string template `<host>:<port>`.
 * `ssl_verify`
 
-    Specifies whether to perform SSL certificate verfication during the
+    Specifies whether to perform SSL certificate verification during the
 SSL handshake if the `wss://` scheme is used.
 
 The SSL connection mode (`wss://`) requires at least `ngx_lua` 0.9.11 or OpenResty 1.7.4.1.
