@@ -324,6 +324,7 @@ text msg received is expected,
 --- no_error_log
 [error]
 --- error_code: 101
+--- no_check_leak
 
 
 
@@ -372,6 +373,7 @@ text msg received is expected,
 --- no_error_log
 [error]
 --- error_code: 101
+--- no_check_leak
 
 
 
@@ -424,6 +426,7 @@ text msg received is expected,
 --- no_error_log
 [error]
 --- error_code: 101
+--- no_check_leak
 
 
 
