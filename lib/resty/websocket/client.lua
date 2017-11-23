@@ -130,10 +130,10 @@ function _M.connect(self, uri, opts)
         end
 
         if opts.headers then
-          headers = opts.headers
-          if type(headers) ~= "table" or #headers > 0 then
-            return nil, "custom headers must be an associative array-only table"
-          end
+            headers = opts.headers
+            if type(headers) ~= "table" then
+                return nil, "custom headers must be a table"
+            end
         end
     end
 
@@ -170,11 +170,8 @@ function _M.connect(self, uri, opts)
 
     local custom_headers
     if headers then
-      local tmp = {}
-      for k, v in pairs(headers) do
-        tmp[#tmp + 1] = "\r\n" .. k .. ": " .. tostring(v)
-      end
-      custom_headers = table.concat(tmp)
+        custom_headers = concat(headers, "\r\n")
+        custom_headers = "\r\n" .. custom_headers
     end
 
     -- do the websocket handshake:
