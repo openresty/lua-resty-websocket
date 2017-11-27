@@ -91,7 +91,7 @@ Synopsis
     end
 
     if typ == "close" then
-        --for typ "close", err contains the status code
+        -- for typ "close", err contains the status code
         local code = err
 
         -- send a close frame back:
