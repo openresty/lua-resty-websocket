@@ -91,6 +91,9 @@ Synopsis
     end
 
     if typ == "close" then
+        -- for typ "close", err contains the status code
+        local code = err
+
         -- send a close frame back:
 
         local bytes, err = wb:send_close(1000, "enough, enough!")
@@ -98,7 +101,6 @@ Synopsis
             ngx.log(ngx.ERR, "failed to send the close frame: ", err)
             return
         end
-        local code = err
         ngx.log(ngx.INFO, "closing with status code ", code, " and message ", data)
         return
     end
