@@ -943,4 +943,3 @@ Sec-WebSocket-Protocol: chat
 --- no_error_log
 [error]
 --- error_code: 101
-
