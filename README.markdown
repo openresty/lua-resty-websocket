@@ -86,8 +86,10 @@ Synopsis
     local data, typ, err = wb:recv_frame()
 
     if not data then
-        ngx.log(ngx.ERR, "failed to receive a frame: ", err)
-        return ngx.exit(444)
+        if not string.find(err, "timeout", 1, true) then
+            ngx.log(ngx.ERR, "failed to receive a frame: ", err)
+            return ngx.exit(444)
+        end
     end
 
     if typ == "close" then
