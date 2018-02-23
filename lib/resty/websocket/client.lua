@@ -18,6 +18,7 @@ local encode_base64 = ngx.encode_base64
 local concat = table.concat
 local char = string.char
 local str_find = string.find
+local str_len = string.len
 local rand = math.random
 local rshift = bit.rshift
 local band = bit.band
@@ -99,6 +100,7 @@ function _M.connect(self, uri, opts)
     end
 
     local ssl_verify, proto_header, origin_header, sock_opts = false
+    local origin_cookies
 
     if opts then
         local protos = opts.protocols
@@ -128,6 +130,11 @@ function _M.connect(self, uri, opts)
             end
             ssl_verify = true
         end
+
+        if opts.cookies and str_len(opts.cookies) > 0 then
+            origin_cookies = "\r\nCookie: " .. opts.cookies
+        end
+
     end
 
     local ok, err
@@ -177,6 +184,7 @@ function _M.connect(self, uri, opts)
                 .. (proto_header or "")
                 .. "\r\nSec-WebSocket-Version: 13"
                 .. (origin_header or "")
+                .. (origin_cookies or "")
                 .. "\r\nConnection: Upgrade\r\n\r\n"
 
     local bytes, err = sock:send(req)

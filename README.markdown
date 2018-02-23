@@ -385,6 +385,9 @@ An optional Lua table can be specified as the last argument to this method to sp
 * `pool`
 
     Specifies a custom name for the connection pool being used. If omitted, then the connection pool name will be generated from the string template `<host>:<port>`.
+* `cookies`
+
+    Specifies the cookies of websocket handshake HTTP request. Cookies should be separated by semi-colon.
 * `ssl_verify`
 
     Specifies whether to perform SSL certificate verification during the
