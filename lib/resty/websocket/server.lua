@@ -22,6 +22,7 @@ local band = bit.band
 local rshift = bit.rshift
 local type = type
 local setmetatable = setmetatable
+local tostring = tostring
 -- local print = print
 
 
@@ -49,7 +50,7 @@ function _M.new(self, opts)
         val = val[1]
     end
     if not val or str_lower(val) ~= "websocket" then
-        return nil, "bad \"upgrade\" request header"
+        return nil, "bad \"upgrade\" request header: " .. tostring(val)
     end
 
     val = headers.connection

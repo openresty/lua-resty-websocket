@@ -152,7 +152,7 @@ function _M.connect(self, uri, opts)
 
     -- check for connections from pool:
 
-    local count,err = sock:getreusedtimes()
+    local count, err = sock:getreusedtimes()
     if not count then
         return nil, "failed to get reused times: " .. err
     end
@@ -190,6 +190,8 @@ function _M.connect(self, uri, opts)
     if not header then
         return nil, "failed to receive response header: " .. err
     end
+
+    -- error("header: " .. header)
 
     -- FIXME: verify the response headers
 
