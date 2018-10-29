@@ -27,7 +27,7 @@ local tostring = tostring
 
 
 local _M = new_tab(0, 10)
-_M._VERSION = '0.06'
+_M._VERSION = '0.07'
 
 local mt = { __index = _M }
 
