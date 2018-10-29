@@ -929,6 +929,7 @@ lua tcp socket read timed out
                     return
                 end
 
+                local typ
                 data, typ, err = wb:recv_frame()
                 if not data then
                     ngx.say("failed to receive 2nd frame: ", err)
@@ -963,7 +964,7 @@ lua tcp socket read timed out
                 end
 
                 -- send it back!
-                bytes, err = wb:send_text(data)
+                local bytes, err = wb:send_text(data)
                 if not bytes then
                     ngx.log(ngx.ERR, "failed to send the 2nd text: ", err)
                     return ngx.exit(444)
@@ -1006,7 +1007,7 @@ recv_frame: mask bit: 1
                 end
             end
 
-            data, typ, err = wb:send_text("hello websocket")
+            local data, typ, err = wb:send_text("hello websocket")
             if not data then
                 ngx.say("failed to receive 2nd frame: ", err)
                 return
@@ -1553,6 +1554,7 @@ failed to connect: failed to receive response header: closed
                     return
                 end
 
+                local typ
                 data, typ, err = wb:recv_frame()
                 if not data then
                     ngx.say("failed to receive 2nd frame: ", err)
@@ -1587,7 +1589,7 @@ failed to connect: failed to receive response header: closed
                 end
 
                 -- send it back!
-                bytes, err = wb:send_text(data)
+                local bytes, err = wb:send_text(data)
                 if not bytes then
                     ngx.log(ngx.ERR, "failed to send the 2nd text: ", err)
                     return ngx.exit(444)
@@ -1639,6 +1641,7 @@ received: hello 3 (text)
                 return
             end
 
+            local typ
             data, typ, err = wb:recv_frame()
             if not data then
                 ngx.say("failed to receive 2nd frame: ", err)
@@ -1671,7 +1674,7 @@ received: hello 3 (text)
             end
 
             -- send it back!
-            bytes, err = wb:send_text(data)
+            local bytes, err = wb:send_text(data)
             if not bytes then
                 ngx.log(ngx.ERR, "failed to send the 2nd text: ", err)
                 return ngx.exit(444)
@@ -1726,6 +1729,7 @@ received: hello (text)
                 return
             end
 
+            local typ
             data, typ, err = wb:recv_frame()
             if not data then
                 ngx.say("failed to receive 2nd frame: ", err)
@@ -1758,7 +1762,7 @@ received: hello (text)
             end
 
             -- send it back!
-            bytes, err = wb:send_text(data)
+            local bytes, err = wb:send_text(data)
             if not bytes then
                 ngx.log(ngx.ERR, "failed to send the 2nd text: ", err)
                 return ngx.exit(444)
@@ -1905,6 +1909,7 @@ lua ssl certificate verify error: (18: self signed certificate)
                     return
                 end
 
+                local typ
                 data, typ, err = wb:recv_frame()
                 if not data then
                     ngx.say("failed to receive 2nd frame: ", err)
@@ -1939,7 +1944,7 @@ lua ssl certificate verify error: (18: self signed certificate)
                 end
 
                 -- send it back!
-                bytes, err = wb:send_text(data)
+                local bytes, err = wb:send_text(data)
                 if not bytes then
                     ngx.log(ngx.ERR, "failed to send the 2nd text: ", err)
                     return ngx.exit(444)
