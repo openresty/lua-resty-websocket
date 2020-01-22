@@ -37,7 +37,7 @@ env:
     - TEST_NGINX_SLEEP=0.006
   matrix:
     - NGINX_VERSION=1.9.15
-    - NGINX_VERSION=1.17.4
+    - NGINX_VERSION=1.17.8
 
 install:
   - if [ ! -d download-cache ]; then mkdir download-cache; fi
