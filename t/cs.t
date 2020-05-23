@@ -1964,3 +1964,46 @@ received: hello 3 (text)
 [warn]
 
 --- timeout: 10
+
+
+
+=== TEST 27: handhake with custom headers
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            local headers = {
+                "a-header: a header value",
+                "another-header: another header value",
+                "yet-another-header: yet another header value"
+            }
+            local ok, err = wb:connect(uri, {headers = headers})
+            if not ok then
+                ngx.say("failed to connect: " .. err)
+                return
+            end
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+            for k, v in pairs(ngx.req.get_headers()) do
+                print(string.format("%s = %s", k, v))
+            end
+        }
+    }
+--- request
+GET /c
+--- error_log
+a-header = a header value
+another-header = another header value
+yet-another-header = yet another header value

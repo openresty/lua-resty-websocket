@@ -98,7 +98,7 @@ function _M.connect(self, uri, opts)
         path = "/"
     end
 
-    local ssl_verify, proto_header, origin_header, sock_opts = false
+    local ssl_verify, headers, proto_header, origin_header, sock_opts = false
 
     if opts then
         local protos = opts.protocols
@@ -127,6 +127,13 @@ function _M.connect(self, uri, opts)
                 return nil, "ngx_lua 0.9.11+ required for SSL sockets"
             end
             ssl_verify = true
+        end
+
+        if opts.headers then
+            headers = opts.headers
+            if type(headers) ~= "table" then
+                return nil, "custom headers must be a table"
+            end
         end
     end
 
@@ -161,6 +168,12 @@ function _M.connect(self, uri, opts)
         return 1
     end
 
+    local custom_headers
+    if headers then
+        custom_headers = concat(headers, "\r\n")
+        custom_headers = "\r\n" .. custom_headers
+    end
+
     -- do the websocket handshake:
 
     local bytes = char(rand(256) - 1, rand(256) - 1, rand(256) - 1,
@@ -177,7 +190,9 @@ function _M.connect(self, uri, opts)
                 .. (proto_header or "")
                 .. "\r\nSec-WebSocket-Version: 13"
                 .. (origin_header or "")
-                .. "\r\nConnection: Upgrade\r\n\r\n"
+                .. "\r\nConnection: Upgrade"
+                .. (custom_headers or "")
+                .. "\r\n\r\n"
 
     local bytes, err = sock:send(req)
     if not bytes then

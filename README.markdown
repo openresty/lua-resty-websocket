@@ -390,6 +390,10 @@ An optional Lua table can be specified as the last argument to this method to sp
     Specifies whether to perform SSL certificate verification during the
 SSL handshake if the `wss://` scheme is used.
 
+* `headers`
+
+    Specifies custom headers to be sent in the handshake request. The table is expected to contain strings in the format `{"a-header: a header value", "another-header: another header value"}`.
+
 The SSL connection mode (`wss://`) requires at least `ngx_lua` 0.9.11 or OpenResty 1.7.4.1.
 
 [Back to TOC](#table-of-contents)
