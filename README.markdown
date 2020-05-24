@@ -38,9 +38,9 @@ Table of Contents
             * [client:recv_frame](#clientrecv_frame)
     * [resty.websocket.protocol](#restywebsocketprotocol)
         * [Methods](#methods)
-            * [recv_frame](#recv_frame)
-            * [build_frame](#build_frame)
-            * [send_frame](#send_frame)
+            * [protocol.recv_frame](#protocolrecv_frame)
+            * [protocol.build_frame](#protocolbuild_frame)
+            * [protocol.send_frame](#protocolsend_frame)
 * [Automatic Error Logging](#automatic-error-logging)
 * [Limitations](#limitations)
 * [Installation](#installation)
@@ -497,21 +497,21 @@ To load this module, just do this
 
 [Back to TOC](#table-of-contents)
 
-#### recv_frame
+#### protocol.recv_frame
 `syntax: data, typ, err = protocol.recv_frame(socket, max_payload_len, force_masking)`
 
 Receives a WebSocket frame from the wire.
 
 [Back to TOC](#table-of-contents)
 
-#### build_frame
+#### protocol.build_frame
 `syntax: frame = protocol.build_frame(fin, opcode, payload_len, payload, masking)`
 
 Builds a raw WebSocket frame.
 
 [Back to TOC](#table-of-contents)
 
-#### send_frame
+#### protocol.send_frame
 `syntax: bytes, err = protocol.send_frame(socket, fin, opcode, payload, max_payload_len, masking)`
 
 Sends a raw WebSocket frame.
