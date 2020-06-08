@@ -2,6 +2,7 @@
 
 
 local bit = require "bit"
+local ffi = require "ffi"
 
 
 local byte = string.byte
@@ -15,12 +16,13 @@ local rshift = bit.rshift
 --local tohex = bit.tohex
 local tostring = tostring
 local concat = table.concat
-local str_char = string.char
 local rand = math.random
 local type = type
 local debug = ngx.config.debug
 local ngx_log = ngx.log
 local ngx_DEBUG = ngx.DEBUG
+local ffi_new = ffi.new
+local ffi_string = ffi.string
 
 
 local ok, new_tab = pcall(require, "table.new")
@@ -175,13 +177,12 @@ function _M.recv_frame(sock, max_payload_len, force_masking)
 
                 if payload_len > 2 then
                     -- TODO string.buffer optimizations
-                    local bytes = new_tab(payload_len - 2, 0)
+                    local bytes = ffi_new("char[?]", payload_len - 2)
                     for i = 3, payload_len do
-                        bytes[i - 2] = str_char(bxor(byte(data, 4 + i),
-                                                     byte(data,
-                                                          (i - 1) % 4 + 1)))
+                        bytes[i - 3] = bxor(byte(data, 4 + i),
+                                            byte(data, (i - 1) % 4 + 1))
                     end
-                    msg = concat(bytes)
+                    msg = ffi_string(bytes, payload_len - 2)
 
                 else
                     msg = ""
@@ -211,12 +212,12 @@ function _M.recv_frame(sock, max_payload_len, force_masking)
     local msg
     if mask then
         -- TODO string.buffer optimizations
-        local bytes = new_tab(payload_len, 0)
+        local bytes = ffi_new("char[?]", payload_len)
         for i = 1, payload_len do
-            bytes[i] = str_char(bxor(byte(data, 4 + i),
-                                     byte(data, (i - 1) % 4 + 1)))
+            bytes[i - 1] = bxor(byte(data, 4 + i),
+                            byte(data, (i - 1) % 4 + 1))
         end
-        msg = concat(bytes)
+        msg = ffi_string(bytes, payload_len)
 
     else
         msg = data
@@ -269,12 +270,12 @@ local function build_frame(fin, opcode, payload_len, payload, masking)
                            band(key, 0xff))
 
         -- TODO string.buffer optimizations
-        local bytes = new_tab(payload_len, 0)
+        local bytes = ffi_new("char[?]", payload_len)
         for i = 1, payload_len do
-            bytes[i] = str_char(bxor(byte(payload, i),
-                                     byte(masking_key, (i - 1) % 4 + 1)))
+            bytes[i - 1] = bxor(byte(payload, i),
+                            byte(masking_key, (i - 1) % 4 + 1))
         end
-        payload = concat(bytes)
+        payload = ffi_string(bytes, payload_len)
 
     else
         masking_key = ""
