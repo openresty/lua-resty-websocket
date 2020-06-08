@@ -215,7 +215,7 @@ function _M.recv_frame(sock, max_payload_len, force_masking)
         local bytes = ffi_new("char[?]", payload_len)
         for i = 1, payload_len do
             bytes[i - 1] = bxor(byte(data, 4 + i),
-                            byte(data, (i - 1) % 4 + 1))
+                                byte(data, (i - 1) % 4 + 1))
         end
         msg = ffi_string(bytes, payload_len)
 
@@ -273,7 +273,7 @@ local function build_frame(fin, opcode, payload_len, payload, masking)
         local bytes = ffi_new("char[?]", payload_len)
         for i = 1, payload_len do
             bytes[i - 1] = bxor(byte(payload, i),
-                            byte(masking_key, (i - 1) % 4 + 1))
+                                byte(masking_key, (i - 1) % 4 + 1))
         end
         payload = ffi_string(bytes, payload_len)
 
