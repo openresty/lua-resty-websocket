@@ -46,6 +46,20 @@ local types = {
     [0xa] = "pong",
 }
 
+local str_buf_size = 4096
+local str_buf
+local c_buf_type = ffi.typeof("char[?]")
+
+local function get_string_buf(size, must_alloc)
+    if size > str_buf_size or must_alloc then
+        return ffi_new(c_buf_type, size)
+    end
+    if not str_buf then
+        str_buf = ffi_new(c_buf_type, str_buf_size)
+    end
+
+    return str_buf
+end
 
 function _M.recv_frame(sock, max_payload_len, force_masking)
     local data, err = sock:receive(2)
@@ -177,7 +191,7 @@ function _M.recv_frame(sock, max_payload_len, force_masking)
 
                 if payload_len > 2 then
                     -- TODO string.buffer optimizations
-                    local bytes = ffi_new("char[?]", payload_len - 2)
+                    local bytes = get_string_buf(payload_len - 2)
                     for i = 3, payload_len do
                         bytes[i - 3] = bxor(byte(data, 4 + i),
                                             byte(data, (i - 1) % 4 + 1))
@@ -212,7 +226,7 @@ function _M.recv_frame(sock, max_payload_len, force_masking)
     local msg
     if mask then
         -- TODO string.buffer optimizations
-        local bytes = ffi_new("char[?]", payload_len)
+        local bytes = get_string_buf(payload_len)
         for i = 1, payload_len do
             bytes[i - 1] = bxor(byte(data, 4 + i),
                                 byte(data, (i - 1) % 4 + 1))
@@ -270,7 +284,7 @@ local function build_frame(fin, opcode, payload_len, payload, masking)
                            band(key, 0xff))
 
         -- TODO string.buffer optimizations
-        local bytes = ffi_new("char[?]", payload_len)
+        local bytes = get_string_buf(payload_len)
         for i = 1, payload_len do
             bytes[i - 1] = bxor(byte(payload, i),
                                 byte(masking_key, (i - 1) % 4 + 1))
