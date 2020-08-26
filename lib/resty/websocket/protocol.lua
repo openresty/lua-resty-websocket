@@ -50,8 +50,9 @@ local str_buf_size = 4096
 local str_buf
 local c_buf_type = ffi.typeof("char[?]")
 
-local function get_string_buf(size, must_alloc)
-    if size > str_buf_size or must_alloc then
+
+local function get_string_buf(size)
+    if size > str_buf_size then
         return ffi_new(c_buf_type, size)
     end
     if not str_buf then
@@ -60,6 +61,7 @@ local function get_string_buf(size, must_alloc)
 
     return str_buf
 end
+
 
 function _M.recv_frame(sock, max_payload_len, force_masking)
     local data, err = sock:receive(2)
