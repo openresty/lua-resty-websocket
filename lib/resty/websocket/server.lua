@@ -95,7 +95,7 @@ function _M.new(self, opts)
     ngx.status = 101
     local ok, err = ngx.send_headers()
     if not ok then
-        return nil, "failed to send response header: " .. (err or "unknonw")
+        return nil, "failed to send response header: " .. (err or "unknown")
     end
     ok, err = ngx.flush(true)
     if not ok then
