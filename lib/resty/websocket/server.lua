@@ -189,6 +189,7 @@ function _M.send_close(self, code, msg)
     local payload
     if code then
         if type(code) ~= "number" or code > 0x7fff then
+            return nil, "bad status code"
         end
         payload = char(band(rshift(code, 8), 0xff), band(code, 0xff))
                         .. (msg or "")
