@@ -6,7 +6,7 @@ use Protocol::WebSocket::Frame;
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 4 + 14);
+plan tests => repeat_each() * (blocks() * 4 + 13);
 
 my $pwd = cwd();
 
@@ -2007,3 +2007,52 @@ GET /c
 a-header = a header value
 another-header = another header value
 yet-another-header = yet another header value
+
+
+
+=== TEST 28: send invalid close status code
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            local ok, err = wb:connect(uri)
+            if not ok then
+                ngx.say("failed to connect: " .. err)
+                return
+            end
+
+            local data, typ, err = wb:recv_frame()
+            if not data then
+                ngx.say("failed to receive: ", err)
+                return
+            end
+
+            ngx.say("received ", typ, ": ", data, ": ", err)
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            local bytes, err = wb:send_close(0xf000, "client, let\'s close!")
+            if not bytes then
+                ngx.log(ngx.ERR, "failed to send close: ", err)
+                return ngx.exit(444)
+            end
+        }
+    }
+--- request
+GET /c
+--- response_body
+failed to receive: failed to receive the first 2 bytes: closed
+--- error_log
+failed to send close: bad status code
