@@ -34,7 +34,7 @@ end
 local _M = new_tab(0, 5)
 
 _M.new_tab = new_tab
-_M._VERSION = '0.08'
+_M._VERSION = '0.09'
 
 
 local types = {
