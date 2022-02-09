@@ -106,6 +106,7 @@ function _M.connect(self, uri, opts)
 
     local host
     local ssl_server_name
+    local key
 
     if opts then
         local protos = opts.protocols
@@ -143,6 +144,8 @@ function _M.connect(self, uri, opts)
         host = opts.host
 
         ssl_server_name = opts.ssl_server_name
+
+        key = opts.key
     end
 
     local ok, err
@@ -184,14 +187,17 @@ function _M.connect(self, uri, opts)
     -- do the websocket handshake:
     local host_header = host or (addr .. ":" .. port)
 
-    local bytes = char(rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                       rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                       rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                       rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                       rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                       rand(256) - 1)
+    if not key then
+        local bytes = char(rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                           rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                           rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                           rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                           rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                           rand(256) - 1)
 
-    local key = encode_base64(bytes)
+        key = encode_base64(bytes)
+    end
+
     local req = "GET " .. path .. " HTTP/1.1\r\nUpgrade: websocket\r\nHost: "
                 .. host_header
                 .. "\r\nSec-WebSocket-Key: " .. key
