@@ -2124,3 +2124,150 @@ qr/host: <127.0.0.1:\d+>/
 GET /c
 --- error_log
 host: <client.test>
+
+
+
+=== TEST 31: SNI from host
+--- http_config eval: $::HttpConfig
+--- config
+    listen 12345 ssl;
+    server_name test.com;
+    ssl_certificate ../../cert/test.crt;
+    ssl_certificate_key ../../cert/test.key;
+    server_tokens off;
+
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+
+            local uri = "wss://127.0.0.1:12345/s"
+            local opts = {
+                host = "test.com",
+                ssl_verify = false,
+            }
+            local ok, err = wb:connect(uri, opts)
+            if not ok then
+                ngx.say("failed to connect: " .. err)
+                return
+            end
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            ngx.log(ngx.INFO, string.format("host: <%s>", ngx.var.http_host))
+            ngx.log(ngx.INFO, "SSL server name: ", ngx.var.ssl_server_name)
+        }
+    }
+--- request
+GET /c
+--- error_log
+host: <test.com>
+SSL server name: test.com
+
+
+
+=== TEST 32: custom SNI
+--- http_config eval: $::HttpConfig
+--- config
+    listen 12345 ssl;
+    server_name test.com client.test;
+    ssl_certificate ../../cert/test.crt;
+    ssl_certificate_key ../../cert/test.key;
+    server_tokens off;
+
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+
+            local uri = "wss://127.0.0.1:12345/s"
+            local opts = {
+                ssl_server_name = "test.com",
+                ssl_verify = false,
+            }
+            local ok, err = wb:connect(uri, opts)
+            if not ok then
+                ngx.say("failed to connect: " .. err)
+                return
+            end
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            ngx.log(ngx.INFO, string.format("host: <%s>", ngx.var.http_host))
+            ngx.log(ngx.INFO, "SSL server name: ", ngx.var.ssl_server_name)
+        }
+    }
+--- request
+GET /c
+--- error_log eval
+[
+    qr/host: <127.0.0.1:\d+>/,
+    "SSL server name: test.com",
+]
+
+
+
+=== TEST 33: custom SNI and host
+--- http_config eval: $::HttpConfig
+--- config
+    listen 12345 ssl;
+    server_name test.com client.test;
+    ssl_certificate ../../cert/test.crt;
+    ssl_certificate_key ../../cert/test.key;
+    server_tokens off;
+
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+
+            local uri = "wss://127.0.0.1:12345/s"
+            local opts = {
+                host = "client.test",
+                ssl_server_name = "test.com",
+                ssl_verify = false,
+            }
+            local ok, err = wb:connect(uri, opts)
+            if not ok then
+                ngx.say("failed to connect: " .. err)
+                return
+            end
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            ngx.log(ngx.INFO, string.format("host: <%s>", ngx.var.http_host))
+            ngx.log(ngx.INFO, "SSL server name: ", ngx.var.ssl_server_name)
+        }
+    }
+--- request
+GET /c
+--- error_log
+host: <client.test>
+SSL server name: test.com

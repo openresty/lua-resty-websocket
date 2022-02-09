@@ -101,6 +101,7 @@ function _M.connect(self, uri, opts)
     local ssl_verify, headers, proto_header, origin_header, sock_opts = false
 
     local host
+    local ssl_server_name
 
     if opts then
         local protos = opts.protocols
@@ -139,6 +140,8 @@ function _M.connect(self, uri, opts)
         end
 
         host = opts.host
+
+        ssl_server_name = opts.ssl_server_name
     end
 
     local ok, err
@@ -152,10 +155,11 @@ function _M.connect(self, uri, opts)
     end
 
     if scheme == "wss" then
+        ssl_server_name = ssl_server_name or host or addr
         if not ssl_support then
             return nil, "ngx_lua 0.9.11+ required for SSL sockets"
         end
-        ok, err = sock:sslhandshake(false, host, ssl_verify)
+        ok, err = sock:sslhandshake(false, ssl_server_name, ssl_verify)
         if not ok then
             return nil, "ssl handshake failed: " .. err
         end
