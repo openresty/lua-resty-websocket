@@ -2056,3 +2056,71 @@ GET /c
 failed to receive: failed to receive the first 2 bytes: closed
 --- error_log
 failed to send close: bad status code
+
+
+
+=== TEST 29: default host header
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            local ok, err = wb:connect(uri)
+            if not ok then
+                ngx.say("failed to connect: " .. err)
+                return
+            end
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+            ngx.log(ngx.INFO, string.format("host: <%s>", ngx.var.http_host))
+        }
+    }
+--- request
+GET /c
+--- error_log eval
+qr/host: <127.0.0.1:\d+>/
+
+
+
+=== TEST 30: handshake with custom host header
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            local ok, err = wb:connect(uri, { host = "client.test" })
+            if not ok then
+                ngx.say("failed to connect: " .. err)
+                return
+            end
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+            ngx.log(ngx.INFO, string.format("host: <%s>", ngx.var.http_host))
+        }
+    }
+--- request
+GET /c
+--- error_log
+host: <client.test>

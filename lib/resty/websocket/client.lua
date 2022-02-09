@@ -83,7 +83,7 @@ function _M.connect(self, uri, opts)
     end
 
     local scheme = m[1]
-    local host = m[2]
+    local addr = m[2]
     local port = m[3]
     local path = m[4]
 
@@ -99,6 +99,8 @@ function _M.connect(self, uri, opts)
     end
 
     local ssl_verify, headers, proto_header, origin_header, sock_opts = false
+
+    local host
 
     if opts then
         local protos = opts.protocols
@@ -135,13 +137,15 @@ function _M.connect(self, uri, opts)
                 return nil, "custom headers must be a table"
             end
         end
+
+        host = opts.host
     end
 
     local ok, err
     if sock_opts then
-        ok, err = sock:connect(host, port, sock_opts)
+        ok, err = sock:connect(addr, port, sock_opts)
     else
-        ok, err = sock:connect(host, port)
+        ok, err = sock:connect(addr, port)
     end
     if not ok then
         return nil, "failed to connect: " .. err
@@ -175,6 +179,7 @@ function _M.connect(self, uri, opts)
     end
 
     -- do the websocket handshake:
+    local host_header = host or (addr .. ":" .. port)
 
     local bytes = char(rand(256) - 1, rand(256) - 1, rand(256) - 1,
                        rand(256) - 1, rand(256) - 1, rand(256) - 1,
@@ -185,7 +190,7 @@ function _M.connect(self, uri, opts)
 
     local key = encode_base64(bytes)
     local req = "GET " .. path .. " HTTP/1.1\r\nUpgrade: websocket\r\nHost: "
-                .. host .. ":" .. port
+                .. host_header
                 .. "\r\nSec-WebSocket-Key: " .. key
                 .. (proto_header or "")
                 .. "\r\nSec-WebSocket-Version: 13"
