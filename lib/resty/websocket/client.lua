@@ -107,6 +107,7 @@ function _M.connect(self, uri, opts)
     local host
     local ssl_server_name
     local key
+    local keep_response
 
     if opts then
         local protos = opts.protocols
@@ -146,6 +147,8 @@ function _M.connect(self, uri, opts)
         ssl_server_name = opts.ssl_server_name
 
         key = opts.key
+
+        keep_response = opts.keep_response
     end
 
     local ok, err
@@ -218,6 +221,10 @@ function _M.connect(self, uri, opts)
     local header, err, partial = header_reader()
     if not header then
         return nil, "failed to receive response header: " .. err
+    end
+
+    if keep_response then
+        self.response = header
     end
 
     -- error("header: " .. header)
