@@ -90,6 +90,10 @@ function _M.connect(self, uri, opts)
     -- ngx.say("host: ", host)
     -- ngx.say("port: ", port)
 
+    if scheme == "wss" and not ssl_support then
+        return nil, "ngx_lua 0.9.11+ required for SSL sockets"
+    end
+
     if not port then
         port = 80
     end
@@ -126,9 +130,6 @@ function _M.connect(self, uri, opts)
         end
 
         if opts.ssl_verify then
-            if not ssl_support then
-                return nil, "ngx_lua 0.9.11+ required for SSL sockets"
-            end
             ssl_verify = true
         end
 
@@ -156,9 +157,7 @@ function _M.connect(self, uri, opts)
 
     if scheme == "wss" then
         ssl_server_name = ssl_server_name or host or addr
-        if not ssl_support then
-            return nil, "ngx_lua 0.9.11+ required for SSL sockets"
-        end
+
         ok, err = sock:sslhandshake(false, ssl_server_name, ssl_verify)
         if not ok then
             return nil, "ssl handshake failed: " .. err
