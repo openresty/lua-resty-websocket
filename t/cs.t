@@ -1872,8 +1872,8 @@ sub {
 --- request
 GET /c
 
---- error_log
-lua ssl certificate verify error: (18: self signed certificate)
+--- error_log eval
+qr/lua (ssl|tls) certificate verify error: \(18: self signed certificate\)/
 
 --- timeout: 10
 

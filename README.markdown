@@ -394,6 +394,25 @@ SSL handshake if the `wss://` scheme is used.
 
     Specifies custom headers to be sent in the handshake request. The table is expected to contain strings in the format `{"a-header: a header value", "another-header: another header value"}`.
 
+* `host`
+
+    Specifies the value of the `Host` request header. If not provided, the
+    `Host` header will be derived from the hostname/address and port in the
+    connection URI.
+
+* `ssl_server_name`
+
+    Specifies the server name/SNI to use when performing the TLS handshake with
+    the server. If not provided, the `host` value or the `<host/addr>:<port>`
+    from the connection URI will be used.
+
+* `key`
+
+    Specifies the value of the `Sec-WebSocket-Key` request header. The value
+    should be a base64-encoded 16 byte value to conform to the client handshake
+    requirements of the [WebSocket RFC](https://datatracker.ietf.org/doc/html/rfc6455#section-4.1).
+    If not provided, a key is randomly generated.
+
 The SSL connection mode (`wss://`) requires at least `ngx_lua` 0.9.11 or OpenResty 1.7.4.1.
 
 [Back to TOC](#table-of-contents)
