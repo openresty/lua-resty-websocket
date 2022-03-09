@@ -91,7 +91,7 @@ function _M.connect(self, uri, opts)
     -- ngx.say("port: ", port)
 
     if not port then
-        port = 80
+        port = scheme == 'wss' and 443 or 80
     end
 
     if path == "" then
