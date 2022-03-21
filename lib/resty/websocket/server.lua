@@ -7,6 +7,7 @@ local wbproto = require "resty.websocket.protocol"
 local new_tab = wbproto.new_tab
 local _recv_frame = wbproto.recv_frame
 local _send_frame = wbproto.send_frame
+local ngx = ngx
 local http_ver = ngx.req.http_version
 local req_sock = ngx.req.socket
 local ngx_header = ngx.header
@@ -16,8 +17,9 @@ local char = string.char
 local str_find = string.find
 local sha1_bin = ngx.sha1_bin
 local base64 = ngx.encode_base64
-local ngx = ngx
 local read_body = ngx.req.read_body
+local ngx_send_headers = ngx.send_headers
+local ngx_flush = ngx.flush
 local band = bit.band
 local rshift = bit.rshift
 local type = type
@@ -93,11 +95,11 @@ function _M.new(self, opts)
     ngx_header["Content-Type"] = nil
 
     ngx.status = 101
-    local ok, err = ngx.send_headers()
+    local ok, err = ngx_send_headers()
     if not ok then
         return nil, "failed to send response header: " .. (err or "unknown")
     end
-    ok, err = ngx.flush(true)
+    ok, err = ngx_flush(true)
     if not ok then
         return nil, "failed to flush response header: " .. (err or "unknown")
     end
