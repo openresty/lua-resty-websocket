@@ -26,6 +26,7 @@ local type = type
 local debug = ngx.config.debug
 local ngx_log = ngx.log
 local ngx_DEBUG = ngx.DEBUG
+local assert = assert
 local ssl_support = true
 
 if not ngx.config
