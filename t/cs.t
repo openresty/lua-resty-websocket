@@ -31,30 +31,6 @@ sub read_file {
     $cert;
 }
 
-our $MTLSCA = read_file("t/cert/mtls_ca.crt");
-our $MTLSClient = read_file("t/cert/mtls_client.crt");
-our $MTLSClientKey = read_file("t/cert/mtls_client.key");
-our $MTLSServer = read_file("t/cert/mtls_server.crt");
-our $MTLSServerKey = read_file("t/cert/mtls_server.key");
-
-our $HtmlDir = html_dir;
-
-our $mtls_http_config = <<"_EOC_";
-server {
-    listen unix:$::HtmlDir/mtls.sock ssl;
-
-    ssl_certificate        $::HtmlDir/mtls_server.crt;
-    ssl_certificate_key    $::HtmlDir/mtls_server.key;
-    ssl_client_certificate $::HtmlDir/mtls_ca.crt;
-    ssl_verify_client      on;
-    server_tokens          off;
-
-    location / {
-        return 200 "hello, \$ssl_client_s_dn";
-    }
-}
-_EOC_
-
 run_tests();
 
 __DATA__
@@ -2096,7 +2072,7 @@ failed to send close: bad status code
 --- http_config eval: $::HttpConfig
 --- config
     listen 12345 ssl;
-    server_name example.com;
+    server_name test.com;
     ssl_certificate ../../cert/mtls_server.crt;
     ssl_certificate_key ../../cert/mtls_server.key;
     ssl_client_certificate ../../cert/mtls_ca.crt;
@@ -2126,7 +2102,7 @@ failed to send close: bad status code
             local client = require "resty.websocket.client"
             local wb, err = client:new()
 
-            local uri = "wss://example.com:12345/s"
+            local uri = "wss://test.com:12345/s"
             local ok, err = wb:connect(uri, {ssl_verify = true, client_cert = chain, client_priv_key = priv})
             if not ok then
                 ngx.say("failed to connect: " .. err)
@@ -2180,14 +2156,13 @@ failed to send close: bad status code
             end
         ';
     }
---- user_files eval: $::mtls_user_files
 --- udp_listen: 1953
 --- udp_reply eval
 sub {
     # Get DNS request ID from passed UDP datagram
     my $dns_id = unpack("n", shift);
     # Set name and encode it
-    my $name = "example.com";
+    my $name = "test.com";
     $name =~ s/([^.]+)\.?/chr(length($1)) . $1/ge;
     $name .= "\0";
     my $s = '';
@@ -2205,7 +2180,6 @@ sub {
     $s .= $name. pack("nnNn", 1, 1, 1, 4) . $data;
     return $s;
 }
-
 --- request
 GET /c
 --- response_body
