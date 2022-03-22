@@ -396,7 +396,7 @@ SSL handshake if the `wss://` scheme is used.
 
 * `client_cert`
 
-    Specifies a client certificate chain cdata object that will be used while handshaking with remote server. 
+    Specifies a client certificate chain cdata object that will be used while TLS handshaking with remote server. 
     These objects can be created using 
     [ngx.ssl.parse_pem_cert](https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/ssl.md#parse_pem_cert) 
     function provided by lua-resty-core. 
