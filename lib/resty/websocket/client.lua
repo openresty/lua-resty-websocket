@@ -165,7 +165,7 @@ function _M.connect(self, uri, opts)
         if client_cert then
             ok, err = sock:setclientcert(client_cert, client_priv_key)
             if not ok then
-                return nil, "ssl client cert failed: " .. err
+                return nil, "failed to set TLS client certificate: " .. err
             end
         end
         ok, err = sock:sslhandshake(false, server_name, ssl_verify)
