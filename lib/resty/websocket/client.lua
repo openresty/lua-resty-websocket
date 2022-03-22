@@ -99,7 +99,8 @@ function _M.connect(self, uri, opts)
         path = "/"
     end
 
-    local ssl_verify, server_name, headers, proto_header, origin_header, sock_opts = false
+    local ssl_verify, server_name, headers, proto_header, origin_header
+    local sock_opts = false
     local client_cert, client_priv_key
 
     if opts then
