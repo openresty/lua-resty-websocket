@@ -2072,7 +2072,7 @@ failed to send close: bad status code
 --- no_check_leak
 --- http_config eval: $::HttpConfig
 --- config
-    listen 12345 ssl;
+    listen $TEST_NGINX_RAND_PORT_1 ssl;
     server_name test.com;
     ssl_certificate ../../cert/mtls_server.crt;
     ssl_certificate_key ../../cert/mtls_server.key;
@@ -2103,7 +2103,7 @@ failed to send close: bad status code
             local client = require "resty.websocket.client"
             local wb, err = client:new()
 
-            local uri = "wss://test.com:12345/s"
+            local uri = "wss://test.com:$TEST_NGINX_RAND_PORT_1/s"
             local ok, err = wb:connect(uri, {ssl_verify = true, client_cert = chain, client_priv_key = priv})
             if not ok then
                 ngx.say("failed to connect: " .. err)
