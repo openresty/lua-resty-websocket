@@ -22,6 +22,15 @@ check_accum_error_log();
 no_long_string();
 #no_diff();
 
+sub read_file {
+    my $infile = shift;
+    open my $in, $infile
+        or die "cannot open $infile for reading: $!";
+    my $cert = do { local $/; <$in> };
+    close $in;
+    $cert;
+}
+
 run_tests();
 
 __DATA__
@@ -2056,3 +2065,129 @@ GET /c
 failed to receive: failed to receive the first 2 bytes: closed
 --- error_log
 failed to send close: bad status code
+
+
+
+=== TEST 29: mutual TLS with client certs
+--- no_check_leak
+--- http_config eval: $::HttpConfig
+--- config
+    listen $TEST_NGINX_RAND_PORT_1 ssl;
+    server_name test.com;
+    ssl_certificate ../../cert/mtls_server.crt;
+    ssl_certificate_key ../../cert/mtls_server.key;
+    ssl_client_certificate ../../cert/mtls_ca.crt;
+    ssl_verify_client      on;
+    server_tokens off;
+
+    resolver 127.0.0.1:1953 ipv6=off;
+    resolver_timeout 1s;
+
+    lua_ssl_trusted_certificate ../../cert/mtls_ca.crt;
+    lua_ssl_verify_depth 2;
+
+    location = /c {
+        content_by_lua_block {
+            local ssl = require "ngx.ssl"
+            local f = assert(io.open('t/cert/mtls_client.crt'))
+            local cert_data = f:read("*a")
+            f:close()
+
+            f = assert(io.open('t/cert/mtls_client.key'))
+            local key_data = f:read("*a")
+            f:close()
+
+            local chain = assert(ssl.parse_pem_cert(cert_data))
+            local priv = assert(ssl.parse_pem_priv_key(key_data))
+
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+
+            local uri = "wss://test.com:$TEST_NGINX_RAND_PORT_1/s"
+            local ok, err = wb:connect(uri, {ssl_verify = true, client_cert = chain, client_priv_key = priv})
+            if not ok then
+                ngx.say("failed to connect: " .. err)
+                return
+            end
+
+            local data = "hello"
+            local bytes, err = wb:send_text(data)
+            if not bytes then
+                ngx.say("failed to send frame: ", err)
+                return
+            end
+
+            local typ
+            data, typ, err = wb:recv_frame()
+            if not data then
+                ngx.say("failed to receive 2nd frame: ", err)
+                return
+            end
+
+            ngx.say("received: ", data, " (", typ, ")")
+
+            local ok, err = wb:close()
+            if not ok then
+                ngx.say("failed to close conn: ", err)
+                return
+            end
+        }
+    }
+
+    location = /s {
+        content_by_lua '
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            local data, typ, err = wb:recv_frame()
+            if not data then
+                -- ngx.log(ngx.ERR, "failed to receive a frame: ", err)
+                return ngx.exit(444)
+            end
+
+            -- send it back!
+            local bytes, err = wb:send_text(data)
+            if not bytes then
+                ngx.log(ngx.ERR, "failed to send the 2nd text: ", err)
+                return ngx.exit(444)
+            end
+        ';
+    }
+--- udp_listen: 1953
+--- udp_reply eval
+sub {
+    # Get DNS request ID from passed UDP datagram
+    my $dns_id = unpack("n", shift);
+    # Set name and encode it
+    my $name = "test.com";
+    $name =~ s/([^.]+)\.?/chr(length($1)) . $1/ge;
+    $name .= "\0";
+    my $s = '';
+    $s .= pack("n", $dns_id);
+    # DNS response flags, hardcoded
+    my $flags = (1 << 15) + (0 << 11) + (0 << 10) + (0 << 9) + (1 << 8) + (1 << 7) + 0;
+    $flags = pack("n", $flags);
+    $s .= $flags;
+    $s .= pack("nnnn", 1, 1, 0, 0);
+    $s .= $name;
+    $s .= pack("nn", 1, 1);
+    # Set response address and pack it
+    my @addr = split /\./, "127.0.0.1";
+    my $data = pack("CCCC", @addr);
+    $s .= $name. pack("nnNn", 1, 1, 1, 4) . $data;
+    return $s;
+}
+--- request
+GET /c
+--- response_body
+received: hello (text)
+
+--- no_error_log
+[error]
+[warn]
+
+--- timeout: 10

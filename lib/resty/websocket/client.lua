@@ -26,6 +26,7 @@ local type = type
 local debug = ngx.config.debug
 local ngx_log = ngx.log
 local ngx_DEBUG = ngx.DEBUG
+local assert = assert
 local ssl_support = true
 
 if not ngx.config
@@ -98,7 +99,9 @@ function _M.connect(self, uri, opts)
         path = "/"
     end
 
-    local ssl_verify, headers, proto_header, origin_header, sock_opts = false
+    local ssl_verify, server_name, headers, proto_header, origin_header
+    local sock_opts = false
+    local client_cert, client_priv_key
 
     if opts then
         local protos = opts.protocols
@@ -122,11 +125,20 @@ function _M.connect(self, uri, opts)
             sock_opts = { pool = pool }
         end
 
-        if opts.ssl_verify then
+        client_cert = opts.client_cert
+        client_priv_key = opts.client_priv_key
+
+        if client_cert then
+            assert(client_priv_key,
+                   "client_priv_key must be provided with client_cert")
+        end
+
+        if opts.ssl_verify or opts.server_name then
             if not ssl_support then
                 return nil, "ngx_lua 0.9.11+ required for SSL sockets"
             end
-            ssl_verify = true
+            ssl_verify = opts.ssl_verify
+            server_name = opts.server_name or host
         end
 
         if opts.headers then
@@ -151,7 +163,13 @@ function _M.connect(self, uri, opts)
         if not ssl_support then
             return nil, "ngx_lua 0.9.11+ required for SSL sockets"
         end
-        ok, err = sock:sslhandshake(false, host, ssl_verify)
+        if client_cert then
+            ok, err = sock:setclientcert(client_cert, client_priv_key)
+            if not ok then
+                return nil, "failed to set TLS client certificate: " .. err
+            end
+        end
+        ok, err = sock:sslhandshake(false, server_name, ssl_verify)
         if not ok then
             return nil, "ssl handshake failed: " .. err
         end
