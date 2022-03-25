@@ -409,6 +409,14 @@ SSL handshake if the `wss://` scheme is used.
     [ngx.ssl.parse_pem_priv_key](https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/ssl.md#parse_pem_priv_key) 
     function provided by lua-resty-core.
 
+* `host`
+
+    Specifies the value of the `Host` header sent in the handshake request. If not provided, the `Host` header will be derived from the hostname/address and port in the connection URI.
+
+* `server_name`
+
+    Specifies the server name (SNI) to use when performing the TLS handshake with the server. If not provided, the `host` value or the `<host/addr>:<port>` from the connection URI will be used.
+
 The SSL connection mode (`wss://`) requires at least `ngx_lua` 0.9.11 or OpenResty 1.7.4.1.
 
 [Back to TOC](#table-of-contents)
