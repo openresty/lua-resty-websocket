@@ -417,6 +417,9 @@ SSL handshake if the `wss://` scheme is used.
 
     Specifies the server name (SNI) to use when performing the TLS handshake with the server. If not provided, the `host` value or the `<host/addr>:<port>` from the connection URI will be used.
 
+* `key`
+
+    Specifies the value of the `Sec-WebSocket-Key` header in the handshake request. The value should be a base64-encoded, 16 byte string conforming to the client handshake requirements of the [WebSocket RFC](https://datatracker.ietf.org/doc/html/rfc6455#section-4.1). If not provided, a key is randomly generated.
 
 
 The SSL connection mode (`wss://`) requires at least `ngx_lua` 0.9.11 or OpenResty 1.7.4.1.
