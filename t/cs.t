@@ -6,7 +6,7 @@ use Protocol::WebSocket::Frame;
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 4 + 1);
+plan tests => repeat_each() * (blocks() * 4 - 1);
 
 my $pwd = cwd();
 
@@ -2527,3 +2527,48 @@ SSL server name: test.com
 GET /c
 --- error_log
 key: y7KXwBSpVrxtkR0O+bQt+Q==
+
+
+
+=== TEST 38: keeping the server handshake response
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            local opts = {
+                keep_response = true,
+            }
+            local ok, err, res = wb:connect(uri, opts)
+            if not ok then
+                ngx.say("failed to connect: ", err)
+                return
+            end
+
+            if not res then
+                ngx.say("no response string")
+                return
+            end
+            ngx.say(res)
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            ngx.header["x-test"] = "test"
+            ngx.header["x-multi"] = { "one", "two" }
+
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+        }
+    }
+--- request
+GET /c
+--- response_body_like
+^HTTP/1\.1 101 Switching Protocols.*

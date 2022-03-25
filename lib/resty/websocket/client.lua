@@ -109,6 +109,7 @@ function _M.connect(self, uri, opts)
     local client_cert, client_priv_key
     local host
     local key
+    local keep_response
 
     if opts then
         local protos = opts.protocols
@@ -164,6 +165,10 @@ function _M.connect(self, uri, opts)
         key = opts.key
         if key ~= nil and type(key) ~= "string" then
             return nil, "custom Sec-WebSocket-Key must be a string"
+        end
+
+        if opts.keep_response then
+            keep_response = true
         end
     end
 
@@ -255,7 +260,11 @@ function _M.connect(self, uri, opts)
         return nil, "bad HTTP response status line: " .. header
     end
 
-    return 1
+    if not keep_response then
+        header = nil
+    end
+
+    return 1, nil, header
 end
 
 
