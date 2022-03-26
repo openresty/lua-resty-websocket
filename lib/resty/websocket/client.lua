@@ -118,6 +118,7 @@ function _M.connect(self, uri, opts)
     local sock_opts = {}
     local client_cert, client_priv_key
     local header_host
+    local key
 
     if opts then
         local protos = opts.protocols
@@ -174,6 +175,11 @@ function _M.connect(self, uri, opts)
         if header_host ~= nil and type(header_host) ~= "string" then
             return nil, "custom host header must be a string"
         end
+
+        key = opts.key
+        if key ~= nil and type(key) ~= "string" then
+            return nil, "custom Sec-WebSocket-Key must be a string"
+        end
     end
 
     local ok, err
@@ -221,14 +227,16 @@ function _M.connect(self, uri, opts)
 
     -- do the websocket handshake:
 
-    local bytes = char(rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                       rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                       rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                       rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                       rand(256) - 1, rand(256) - 1, rand(256) - 1,
-                       rand(256) - 1)
+    if not key then
+        local bytes = char(rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                           rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                           rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                           rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                           rand(256) - 1, rand(256) - 1, rand(256) - 1,
+                           rand(256) - 1)
 
-    local key = encode_base64(bytes)
+        key = encode_base64(bytes)
+    end
 
     local host_header = header_host 
                         or (is_unix and "unix_sock" or addr .. ":" .. port)
