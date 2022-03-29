@@ -311,7 +311,7 @@ A simple example to demonstrate the usage:
     local client = require "resty.websocket.client"
     local wb, err = client:new()
     local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
-    local ok, err = wb:connect(uri)
+    local ok, err, res = wb:connect(uri)
     if not ok then
         ngx.say("failed to connect: " .. err)
         return
@@ -374,17 +374,19 @@ An optional options table can be specified. The following options are as follows
 [Back to TOC](#table-of-contents)
 
 #### client:connect
-`syntax: ok, err = wb:connect("ws://<host>:<port>/<path>")`
+`syntax: ok, err, res = wb:connect("ws://<host>:<port>/<path>")`
 
-`syntax: ok, err = wb:connect("wss://<host>:<port>/<path>")`
+`syntax: ok, err, res = wb:connect("wss://<host>:<port>/<path>")`
 
-`syntax: ok, err = wb:connect("ws://<host>:<port>/<path>", options)`
+`syntax: ok, err, res = wb:connect("ws://<host>:<port>/<path>", options)`
 
-`syntax: ok, err = wb:connect("wss://<host>:<port>/<path>", options)`
+`syntax: ok, err, res = wb:connect("wss://<host>:<port>/<path>", options)`
 
 Connects to the remote WebSocket service port and performs the websocket handshake process on the client side.
 
 Before actually resolving the host name and connecting to the remote backend, this method will always look up the connection pool for matched idle connections created by previous calls of this method.
+
+The third return value of this method contains the raw, plain-text response (status line and headers) to the handshake request. This allows the caller to perform additional validation and/or extract the response headers. When the connection is reused and no handshake request is sent, the string `"connection reused"` is returned in lieu of the response.
 
 An optional Lua table can be specified as the last argument to this method to specify various connect options:
 
