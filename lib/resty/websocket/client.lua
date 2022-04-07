@@ -91,13 +91,13 @@ function _M.connect(self, uri, opts)
     -- ngx.say("host: ", host)
     -- ngx.say("port: ", port)
 
-    local ssl = scheme == "wss"
-    if ssl and not ssl_support then
+    local is_ssl = scheme == "wss"
+    if is_ssl and not ssl_support then
         return nil, "ngx_lua 0.9.11+ required for SSL sockets"
     end
 
     if not port then
-        port = ssl and 443 or 80
+        port = is_ssl and 443 or 80
     end
 
     if path == "" then
@@ -169,7 +169,7 @@ function _M.connect(self, uri, opts)
         return nil, "failed to connect: " .. err
     end
 
-    if ssl then
+    if is_ssl then
         if client_cert then
             ok, err = sock:setclientcert(client_cert, client_priv_key)
             if not ok then
