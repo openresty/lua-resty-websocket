@@ -84,15 +84,20 @@ function _M.connect(self, uri, opts)
     end
 
     local scheme = m[1]
-    local host = m[2]
+    local addr = m[2]
     local port = m[3]
     local path = m[4]
 
     -- ngx.say("host: ", host)
     -- ngx.say("port: ", port)
 
+    local is_ssl = scheme == "wss"
+    if is_ssl and not ssl_support then
+        return nil, "ngx_lua 0.9.11+ required for SSL sockets"
+    end
+
     if not port then
-        port = scheme == 'wss' and 443 or 80
+        port = is_ssl and 443 or 80
     end
 
     if path == "" then
@@ -102,6 +107,7 @@ function _M.connect(self, uri, opts)
     local ssl_verify, server_name, headers, proto_header, origin_header
     local sock_opts = false
     local client_cert, client_priv_key
+    local host
 
     if opts then
         local protos = opts.protocols
@@ -133,12 +139,11 @@ function _M.connect(self, uri, opts)
                    "client_priv_key must be provided with client_cert")
         end
 
-        if opts.ssl_verify or opts.server_name then
-            if not ssl_support then
-                return nil, "ngx_lua 0.9.11+ required for SSL sockets"
-            end
-            ssl_verify = opts.ssl_verify
-            server_name = opts.server_name or host
+        ssl_verify = opts.ssl_verify
+
+        server_name = opts.server_name
+        if server_name ~= nil and type(server_name) ~= "string" then
+            return nil, "SSL server_name must be a string"
         end
 
         if opts.headers then
@@ -147,28 +152,33 @@ function _M.connect(self, uri, opts)
                 return nil, "custom headers must be a table"
             end
         end
+
+        host = opts.host
+        if host ~= nil and type(host) ~= "string" then
+            return nil, "custom host header must be a string"
+        end
     end
 
     local ok, err
     if sock_opts then
-        ok, err = sock:connect(host, port, sock_opts)
+        ok, err = sock:connect(addr, port, sock_opts)
     else
-        ok, err = sock:connect(host, port)
+        ok, err = sock:connect(addr, port)
     end
     if not ok then
         return nil, "failed to connect: " .. err
     end
 
-    if scheme == "wss" then
-        if not ssl_support then
-            return nil, "ngx_lua 0.9.11+ required for SSL sockets"
-        end
+    if is_ssl then
         if client_cert then
             ok, err = sock:setclientcert(client_cert, client_priv_key)
             if not ok then
                 return nil, "failed to set TLS client certificate: " .. err
             end
         end
+
+        server_name = server_name or host or addr
+
         ok, err = sock:sslhandshake(false, server_name, ssl_verify)
         if not ok then
             return nil, "ssl handshake failed: " .. err
@@ -202,8 +212,11 @@ function _M.connect(self, uri, opts)
                        rand(256) - 1)
 
     local key = encode_base64(bytes)
+
+    local host_header = host or (addr .. ":" .. port)
+
     local req = "GET " .. path .. " HTTP/1.1\r\nUpgrade: websocket\r\nHost: "
-                .. host .. ":" .. port
+                .. host_header
                 .. "\r\nSec-WebSocket-Key: " .. key
                 .. (proto_header or "")
                 .. "\r\nSec-WebSocket-Version: 13"
