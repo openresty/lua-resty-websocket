@@ -390,7 +390,7 @@ An optional Lua table can be specified as the last argument to this method to sp
   specify the size of the connection pool. If omitted and no
   `backlog` option was provided, no pool will be created. If omitted
   but `backlog` was provided, the pool will be created with a default
-  size equal to the value of the [lua_socket_pool_size](#lua_socket_pool_size)
+  size equal to the value of the [lua_socket_pool_size](https://github.com/openresty/lua-nginx-module/tree/master#lua_socket_pool_size)
   directive.
   The connection pool holds up to `pool_size` alive connections
   ready to be reused by subsequent calls to [connect](#client:connect), but
