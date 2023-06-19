@@ -2,7 +2,7 @@
 
 
 -- FIXME: this library is very rough and is currently just for testing
---        the websocket server.
+--        the websocket client.
 
 
 local wbproto = require "resty.websocket.protocol"
@@ -100,7 +100,7 @@ function _M.connect(self, uri, opts)
     end
 
     local ssl_verify, server_name, headers, proto_header, origin_header
-    local sock_opts = false
+    local sock_opts = {}
     local client_cert, client_priv_key
 
     if opts then
@@ -120,10 +120,17 @@ function _M.connect(self, uri, opts)
             origin_header = "\r\nOrigin: " .. origin
         end
 
-        local pool = opts.pool
-        if pool then
-            sock_opts = { pool = pool }
+        if opts.pool then
+            sock_opts.pool = opts.pool
         end
+        --pool_size specify the size of the connection pool. If omitted and no backlog option was provided, no pool will be created.
+        if opts.pool_size then
+            sock_opts.pool_size = opts.pool_size
+        end
+        if opts.backlog then
+            sock_opts.backlog = opts.backlog
+        end
+
 
         client_cert = opts.client_cert
         client_priv_key = opts.client_priv_key
@@ -149,14 +156,20 @@ function _M.connect(self, uri, opts)
         end
     end
 
-    local ok, err
-    if sock_opts then
-        ok, err = sock:connect(host, port, sock_opts)
-    else
-        ok, err = sock:connect(host, port)
-    end
+    local ok, err = sock:connect(host, port, sock_opts)
     if not ok then
         return nil, "failed to connect: " .. err
+    end
+
+    -- check for connections from pool:
+    local reused_count, err = sock:getreusedtimes()
+    if not reused_count then
+        return nil, "failed to get reused times: " .. tostring(err)
+    end
+
+    if reused_count > 0 then
+        -- being a reused connection (must have done handshake)
+        return 1
     end
 
     if scheme == "wss" then
@@ -173,17 +186,6 @@ function _M.connect(self, uri, opts)
         if not ok then
             return nil, "ssl handshake failed: " .. err
         end
-    end
-
-    -- check for connections from pool:
-
-    local count, err = sock:getreusedtimes()
-    if not count then
-        return nil, "failed to get reused times: " .. err
-    end
-    if count > 0 then
-        -- being a reused connection (must have done handshake)
-        return 1
     end
 
     local custom_headers
