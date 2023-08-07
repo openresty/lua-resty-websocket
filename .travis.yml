@@ -35,8 +35,8 @@ env:
     - LD_LIBRARY_PATH=$LUAJIT_LIB:$LD_LIBRARY_PATH
     - TEST_NGINX_SLEEP=0.006
   matrix:
-    - NGINX_VERSION=1.19.9
     - NGINX_VERSION=1.21.4
+    - NGINX_VERSION=1.25.1
 
 install:
   - if [ ! -d download-cache ]; then mkdir download-cache; fi
@@ -68,7 +68,8 @@ script:
   - export LD_LIBRARY_PATH=$PWD/mockeagain:$LD_LIBRARY_PATH
   - export TEST_NGINX_RESOLVER=8.8.4.4
   - export NGX_BUILD_CC=$CC
-  - ngx-build $NGINX_VERSION --with-ipv6 --with-http_realip_module --with-http_ssl_module --with-cc-opt="-I$OPENSSL_INC" --with-ld-opt="-L$OPENSSL_LIB -Wl,-rpath,$OPENSSL_LIB" --add-module=../ndk-nginx-module --add-module=../lua-nginx-module --with-debug > build.log 2>&1 || (cat build.log && exit 1)
+  - disable_pcre2=--without-pcre2; answer=`nginx-devel-utils/ngx-ver-ge "$NGINX_VERSION" 1.25.1`; if [ "$answer" = "N" ]; then disable_pcre2=""; fi; export disable_pcre2;
+  - ngx-build $NGINX_VERSION $disable_pcre2 --with-ipv6 --with-http_realip_module --with-http_ssl_module --with-cc-opt="-I$OPENSSL_INC" --with-ld-opt="-L$OPENSSL_LIB -Wl,-rpath,$OPENSSL_LIB" --add-module=../ndk-nginx-module --add-module=../lua-nginx-module --with-debug > build.log 2>&1 || (cat build.log && exit 1)
   - nginx -V
   - ldd `which nginx`|grep -E 'luajit|ssl|pcre'
   - prove -I. -r t
