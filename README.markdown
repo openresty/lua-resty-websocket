@@ -92,6 +92,12 @@ Synopsis
         end
     end
 
+    local ngx_exit = ngx.worker.exiting()
+    if ngx_exit then
+        ngx.log(ngx.ERR, "closing open websockets - nginx worker exiting")
+        wb:send_close()
+    end
+
     if typ == "close" then
         -- for typ "close", err contains the status code
         local code = err
