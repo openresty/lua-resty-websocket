@@ -14,6 +14,7 @@ local _send_frame = wbproto.send_frame
 local new_tab = wbproto.new_tab
 local tcp = ngx.socket.tcp
 local re_match = ngx.re.match
+local re_find  = ngx.re.find
 local encode_base64 = ngx.encode_base64
 local concat = table.concat
 local char = string.char
@@ -74,7 +75,16 @@ function _M.connect(self, uri, opts)
         return nil, "not initialized"
     end
 
-    local m, err = re_match(uri, [[^(wss?)://([^:/]+)(?::(\d+))?(.*)]], "jo")
+    local is_unix = false
+
+    local m, err
+    if re_find(uri, "unix:") then
+        is_unix = true
+        m, err = re_match(uri, [[^(wss?)://(unix:[^:]+):()(.*)]], "jo")
+    else
+        m, err = re_match(uri, [[^(wss?)://([^:/]+)(?::(\d+))?(.*)]], "jo")
+    end
+
     if not m then
         if err then
             return nil, "failed to match the uri: " .. err
@@ -158,7 +168,12 @@ function _M.connect(self, uri, opts)
         end
     end
 
-    local ok, err = sock:connect(host, port, sock_opts)
+    local ok, err
+    if is_unix then
+        ok, err = sock:connect(host, sock_opts)
+    else
+        ok, err = sock:connect(host, port, sock_opts)
+    end
     if not ok then
         return nil, "failed to connect: " .. err
     end
@@ -204,7 +219,7 @@ function _M.connect(self, uri, opts)
 
     local key = encode_base64(bytes)
     local req = "GET " .. path .. " HTTP/1.1\r\nUpgrade: websocket\r\nHost: "
-                .. host .. ":" .. port
+                .. (is_unix and "unix_sock" or host .. ":" .. port)
                 .. "\r\nSec-WebSocket-Key: " .. key
                 .. (proto_header or "")
                 .. "\r\nSec-WebSocket-Version: 13"
