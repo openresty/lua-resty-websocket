@@ -169,18 +169,10 @@ function _M.connect(self, uri, opts)
     end
 
     local ok, err
-    if sock_opts then
-        if is_unix then
-            ok, err = sock:connect(host, sock_opts)
-        else
-            ok, err = sock:connect(host, port, sock_opts)
-        end
+    if is_unix then
+        ok, err = sock:connect(host, sock_opts)
     else
-        if is_unix then
-            ok, err = sock:connect(host)
-        else
-            ok, err = sock:connect(host, port)
-        end
+        ok, err = sock:connect(host, port, sock_opts)
     end
     if not ok then
         return nil, "failed to connect: " .. err
