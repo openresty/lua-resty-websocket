@@ -117,7 +117,7 @@ function _M.connect(self, uri, opts)
     local ssl_verify, server_name, headers, proto_header, origin_header
     local sock_opts = {}
     local client_cert, client_priv_key
-    local host
+    local header_host
 
     if opts then
         local protos = opts.protocols
@@ -170,17 +170,17 @@ function _M.connect(self, uri, opts)
             end
         end
 
-        host = opts.host
-        if host ~= nil and type(host) ~= "string" then
+        header_host = opts.host
+        if header_host ~= nil and type(header_host) ~= "string" then
             return nil, "custom host header must be a string"
         end
     end
 
     local ok, err
     if is_unix then
-        ok, err = sock:connect(host, sock_opts)
+        ok, err = sock:connect(addr, sock_opts)
     else
-        ok, err = sock:connect(host, port, sock_opts)
+        ok, err = sock:connect(addr, port, sock_opts)
     end
     if not ok then
         return nil, "failed to connect: " .. err
@@ -205,7 +205,7 @@ function _M.connect(self, uri, opts)
             end
         end
 
-        server_name = server_name or host or addr
+        server_name = server_name or header_host or addr
 
         ok, err = sock:sslhandshake(false, server_name, ssl_verify)
         if not ok then
@@ -230,7 +230,8 @@ function _M.connect(self, uri, opts)
 
     local key = encode_base64(bytes)
 
-    local host_header = host or (is_unix and "unix_sock" or addr .. ":" .. port)
+    local host_header = header_host 
+                        or (is_unix and "unix_sock" or addr .. ":" .. port)
 
     local req = "GET " .. path .. " HTTP/1.1\r\nUpgrade: websocket\r\nHost: "
                 .. host_header
