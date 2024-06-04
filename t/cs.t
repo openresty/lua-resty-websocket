@@ -6,7 +6,7 @@ use Protocol::WebSocket::Frame;
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 4 + 13);
+plan tests => repeat_each() * (blocks() * 4 + 3);
 
 my $pwd = cwd();
 
@@ -2191,3 +2191,300 @@ received: hello (text)
 [warn]
 
 --- timeout: 10
+
+
+
+=== TEST 30: handshake with default host header
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            local ok, err = wb:connect(uri)
+            if not ok then
+                ngx.say("failed to connect: ", err)
+                return
+            end
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+            ngx.log(ngx.INFO, "host: <", ngx.var.http_host, ">")
+        }
+    }
+--- request
+GET /c
+--- error_log eval
+qr/host: <127.0.0.1:\d+>/
+
+
+
+=== TEST 31: handshake with custom host header (without port number)
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            local ok, err = wb:connect(uri, { host = "client.test" })
+            if not ok then
+                ngx.say("failed to connect: ", err)
+                return
+            end
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+            ngx.log(ngx.INFO, "host: <", ngx.var.http_host, ">")
+        }
+    }
+--- request
+GET /c
+--- error_log
+host: <client.test>
+
+
+
+=== TEST 32: handshake with custom host header (with port number)
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            local ok, err = wb:connect(uri, { host = "client.test:8080" })
+            if not ok then
+                ngx.say("failed to connect: ", err)
+                return
+            end
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+            ngx.log(ngx.INFO, "host: <", ngx.var.http_host, ">")
+        }
+    }
+--- request
+GET /c
+--- error_log
+host: <client.test:8080>
+
+
+
+=== TEST 33: SNI derived from custom host header (without port number)
+--- http_config eval: $::HttpConfig
+--- config
+    listen 12345 ssl;
+    server_name test.com;
+    ssl_certificate ../../cert/test.crt;
+    ssl_certificate_key ../../cert/test.key;
+    server_tokens off;
+
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+
+            local uri = "wss://127.0.0.1:12345/s"
+            local opts = {
+                host = "test.com",
+                ssl_verify = false,
+            }
+            local ok, err = wb:connect(uri, opts)
+            if not ok then
+                ngx.say("failed to connect: ", err)
+                return
+            end
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            ngx.log(ngx.INFO, "host: <", ngx.var.http_host, ">")
+            ngx.log(ngx.INFO, "SSL server name: <", ngx.var.ssl_server_name, ">")
+        }
+    }
+--- request
+GET /c
+--- error_log
+host: <test.com>
+SSL server name: <test.com>
+
+
+
+=== TEST 34: SNI derived from custom host header (with port number)
+--- http_config eval: $::HttpConfig
+--- config
+    listen 12345 ssl;
+    server_name test.com;
+    ssl_certificate ../../cert/test.crt;
+    ssl_certificate_key ../../cert/test.key;
+    server_tokens off;
+
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+
+            local uri = "wss://127.0.0.1:12345/s"
+            local opts = {
+                host = "test.com:8443",
+                ssl_verify = false,
+            }
+            local ok, err = wb:connect(uri, opts)
+            if not ok then
+                ngx.say("failed to connect: ", err)
+                return
+            end
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            ngx.log(ngx.INFO, "host: <", ngx.var.http_host, ">")
+            ngx.log(ngx.INFO, "SSL server name: <", ngx.var.ssl_server_name, ">")
+        }
+    }
+--- request
+GET /c
+--- error_log
+host: <test.com:8443>
+SSL server name: <test.com:8443>
+
+
+
+=== TEST 35: custom SNI
+--- http_config eval: $::HttpConfig
+--- config
+    listen 12345 ssl;
+    server_name test.com client.test;
+    ssl_certificate ../../cert/test.crt;
+    ssl_certificate_key ../../cert/test.key;
+    server_tokens off;
+
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+
+            local uri = "wss://127.0.0.1:12345/s"
+            local opts = {
+                server_name = "test.com",
+                ssl_verify = false,
+            }
+            local ok, err = wb:connect(uri, opts)
+            if not ok then
+                ngx.say("failed to connect: ", err)
+                return
+            end
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            ngx.log(ngx.INFO, "host: <", ngx.var.http_host, ">")
+            ngx.log(ngx.INFO, "SSL server name: <", ngx.var.ssl_server_name, ">")
+        }
+    }
+--- request
+GET /c
+--- error_log eval
+[
+    qr/host: <127.0.0.1:\d+>/,
+    "SSL server name: <test.com>",
+]
+
+
+
+=== TEST 36: custom SNI and host
+--- http_config eval: $::HttpConfig
+--- config
+    listen 12345 ssl;
+    server_name test.com client.test;
+    ssl_certificate ../../cert/test.crt;
+    ssl_certificate_key ../../cert/test.key;
+    server_tokens off;
+
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+
+            local uri = "wss://127.0.0.1:12345/s"
+            local opts = {
+                host = "client.test",
+                server_name = "test.com",
+                ssl_verify = false,
+            }
+            local ok, err = wb:connect(uri, opts)
+            if not ok then
+                ngx.say("failed to connect: ", err)
+                return
+            end
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            ngx.log(ngx.INFO, "host: <", ngx.var.http_host, ">")
+            ngx.log(ngx.INFO, "SSL server name: <", ngx.var.ssl_server_name, ">")
+        }
+    }
+--- request
+GET /c
+--- error_log
+host: <client.test>
+SSL server name: <test.com>
