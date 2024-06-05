@@ -178,7 +178,13 @@ An optional options table can be specified. The following options are as follows
 
 * `max_payload_len`
 
-    Specifies the maximal length of payload allowed when sending and receiving WebSocket frames.
+    Specifies the maximal length of payload allowed when sending and receiving WebSocket frames. Defaults to `65535`.
+* `max_recv_len`
+
+    Specifies the maximal length of payload allowed when receiving WebSocket frames. Defaults to the value of `max_payload_len`.
+* `max_send_len`
+
+    Specifies the maximal length of payload allowed when sending WebSocket frames. Defaults to the value of `max_payload_len`.
 * `send_masked`
 
     Specifies whether to send out masked WebSocket frames. When it is `true`, masked frames are always sent. Default to `false`.
@@ -351,7 +357,13 @@ An optional options table can be specified. The following options are as follows
 
 * `max_payload_len`
 
-    Specifies the maximal length of payload allowed when sending and receiving WebSocket frames.
+    Specifies the maximal length of payload allowed when sending and receiving WebSocket frames. Defaults to `65536`.
+* `max_recv_len`
+
+    Specifies the maximal length of payload allowed when receiving WebSocket frames. Defaults to the value of `max_payload_len`.
+* `max_send_len`
+
+    Specifies the maximal length of payload allowed when sending WebSocket frames. Defaults to the value of `max_payload_len`.
 * `send_unmasked`
 
     Specifies whether to send out an unmasked WebSocket frames. When it is `true`, unmasked frames are always sent. Default to `false`. RFC 6455 requires, however, that the client MUST send masked frames to the server, so never set this option to `true` unless you know what you are doing.

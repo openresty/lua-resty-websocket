@@ -51,8 +51,12 @@ function _M.new(self, opts)
     end
 
     local max_payload_len, send_unmasked, timeout
+    local max_recv_len, max_send_len
     if opts then
         max_payload_len = opts.max_payload_len
+        max_recv_len = opts.max_recv_len
+        max_send_len = opts.max_send_len
+
         send_unmasked = opts.send_unmasked
         timeout = opts.timeout
 
@@ -61,9 +65,14 @@ function _M.new(self, opts)
         end
     end
 
+    max_payload_len = max_payload_len or 65535
+    max_recv_len = max_recv_len or max_payload_len
+    max_send_len = max_send_len or max_payload_len
+
     return setmetatable({
         sock = sock,
-        max_payload_len = max_payload_len or 65535,
+        max_recv_len = max_recv_len,
+        max_send_len = max_send_len,
         send_unmasked = send_unmasked,
     }, mt)
 end
@@ -288,7 +297,7 @@ function _M.recv_frame(self)
         return nil, nil, "not initialized yet"
     end
 
-    local data, typ, err =  _recv_frame(sock, self.max_payload_len, false)
+    local data, typ, err =  _recv_frame(sock, self.max_recv_len, false)
     if not data and not str_find(err, ": timeout", 1, true) then
         self.fatal = true
     end
@@ -311,7 +320,7 @@ local function send_frame(self, fin, opcode, payload)
     end
 
     local bytes, err = _send_frame(sock, fin, opcode, payload,
-                                   self.max_payload_len,
+                                   self.max_send_len,
                                    not self.send_unmasked)
     if not bytes then
         self.fatal = true
