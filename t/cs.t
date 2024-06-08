@@ -2567,6 +2567,8 @@ key: y7KXwBSpVrxtkR0O+bQt+Q==
 
     location = /s {
         content_by_lua_block {
+            ngx.header["X-My-Custom-Header"] = "test"
+
             local server = require "resty.websocket.server"
             local wb, err = server:new()
             if not wb then
@@ -2578,7 +2580,7 @@ key: y7KXwBSpVrxtkR0O+bQt+Q==
 --- request
 GET /c
 --- response_body_like
-^HTTP\/1\.1 101 Switching Protocols.*
+^HTTP\/1\.1 101 Switching Protocols.*X-My-Custom-Header: test.*
 --- no_error_log
 [error]
 [warn]
