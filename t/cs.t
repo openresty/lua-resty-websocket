@@ -921,14 +921,25 @@ lua tcp socket read timed out
         content_by_lua '
             local client = require "resty.websocket.client"
             local wb, err = client:new()
+            local connect_opts = {
+                -- choose a unique keepalive pool name to ensure our first
+                -- connection is not reused
+                pool = ngx.var.request_id,
+            }
 
             for i = 1, 3 do
                 local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
                 -- ngx.say("uri: ", uri)
-                local ok, err = wb:connect(uri)
+                local ok, err, res = wb:connect(uri, connect_opts)
                 if not ok then
                     ngx.say("failed to connect: " .. err)
                     return
+                end
+
+                if res == "connection reused" then
+                    ngx.say(res)
+                else
+                    ngx.say("new connection")
                 end
 
                 local data = "hello " .. i
@@ -984,8 +995,11 @@ lua tcp socket read timed out
 --- request
 GET /c
 --- response_body
+new connection
 received: hello 1 (text)
+connection reused
 received: hello 2 (text)
+connection reused
 received: hello 3 (text)
 
 --- no_error_log
@@ -2526,3 +2540,158 @@ SSL server name: <test.com>
 GET /c
 --- error_log
 key: y7KXwBSpVrxtkR0O+bQt+Q==
+
+
+
+=== TEST 38: server handshake response string
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            local ok, err, res = wb:connect(uri)
+            if not ok then
+                ngx.say("failed to connect: ", err)
+                return
+            end
+
+            if not res then
+                ngx.say("no response string")
+                return
+            end
+            ngx.say(res)
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            ngx.header["X-My-Custom-Header"] = "test"
+
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+        }
+    }
+--- request
+GET /c
+--- response_body_like
+^HTTP\/1\.1 101 Switching Protocols.*X-My-Custom-Header: test.*
+--- no_error_log
+[error]
+[warn]
+
+
+
+=== TEST 39: server handshake response string (reused connection)
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            local connect_opts = {
+                -- choose a unique keepalive pool name to ensure our first
+                -- connection is not reused
+                pool = ngx.var.request_id,
+            }
+
+            local ok, err, res = wb:connect(uri, connect_opts)
+            if not ok then
+                ngx.say("failed to connect: ", err)
+                return
+            end
+
+            if not res then
+                ngx.say("no response string")
+                return
+            end
+
+            if not res:match("^HTTP/1%.1 101 Switching Protocols\r\n") then
+                ngx.say("invalid response string")
+                return
+            end
+
+            ok, err = wb:send_text("first connection")
+            if not ok then
+                ngx.say("failed to send message: ", err)
+                return
+            end
+
+            local data, typ, err = wb:recv_frame()
+            if not data then
+                ngx.say("failed to receive message: ", err)
+                return
+            end
+            ngx.say("received ", typ, " frame: ", data)
+
+            ok, err = wb:set_keepalive()
+            if not ok then
+                ngx.say("failed to enable keepalive: ", err)
+                return
+            end
+
+            wb = client:new()
+            ok, err, res = wb:connect(uri, connect_opts)
+            if not ok then
+                ngx.say("second connect failed: ", err)
+                return
+            end
+
+            if res ~= "connection reused" then
+                ngx.say("expected 'connection reused' response string")
+                return
+            end
+
+            ok, err = wb:send_text("reused connection")
+            if not ok then
+                ngx.say("failed to send message: ", err)
+                return
+            end
+
+            local data, typ, err = wb:recv_frame()
+            if not data then
+                ngx.say("failed to receive message: ", err)
+                return
+            end
+            ngx.say("received ", typ, " frame: ", data)
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+
+            while true do
+                local data, typ, err = wb:recv_frame()
+                if not data then
+                    return ngx.exit(444)
+                end
+
+                -- send it back!
+                local bytes, err = wb:send_text(data)
+                if not bytes then
+                    ngx.log(ngx.ERR, "failed to send text frame: ", err)
+                    return ngx.exit(444)
+                end
+            end
+        }
+    }
+--- request
+GET /c
+--- response_body
+received text frame: first connection
+received text frame: reused connection
+--- no_error_log
+[error]
+[warn]
