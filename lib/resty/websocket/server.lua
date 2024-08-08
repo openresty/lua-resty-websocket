@@ -29,7 +29,7 @@ local tostring = tostring
 
 
 local _M = new_tab(0, 10)
-_M._VERSION = '0.10'
+_M._VERSION = '0.12'
 
 local mt = { __index = _M }
 
