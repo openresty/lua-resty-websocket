@@ -2,7 +2,7 @@
 
 
 -- FIXME: this library is very rough and is currently just for testing
---        the websocket client.
+--        the websocket server.
 
 
 local wbproto = require "resty.websocket.protocol"
