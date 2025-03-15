@@ -51,11 +51,14 @@ function _M.new(self, opts)
     end
 
     local max_payload_len, send_unmasked, timeout
-    local max_recv_len, max_send_len
+    local max_recv_len, max_send_len, max_header_len
+    local validate_handshake
     if opts then
         max_payload_len = opts.max_payload_len
         max_recv_len = opts.max_recv_len
         max_send_len = opts.max_send_len
+        max_header_len = opts.max_header_len
+        validate_handshake = opts.validate_handshake
 
         send_unmasked = opts.send_unmasked
         timeout = opts.timeout
@@ -68,12 +71,16 @@ function _M.new(self, opts)
     max_payload_len = max_payload_len or 65535
     max_recv_len = max_recv_len or max_payload_len
     max_send_len = max_send_len or max_payload_len
+    max_header_len = max_header_len or 0
+    validate_handshake = validate_handshake or false
 
     return setmetatable({
         sock = sock,
         max_recv_len = max_recv_len,
         max_send_len = max_send_len,
+        max_header_len = max_header_len,
         send_unmasked = send_unmasked,
+        validate_handshake = validate_handshake,
     }, mt)
 end
 
@@ -265,20 +272,39 @@ function _M.connect(self, uri, opts)
         return nil, "failed to send the handshake request: " .. err
     end
 
+    -- Parse request up to end of headers.
+    local header, err
     local header_reader = sock:receiveuntil("\r\n\r\n")
-    -- FIXME: check for too big response headers
-    local header, err, partial = header_reader()
+    if self.max_header_len > 0 then
+        header, err = header_reader(self.max_header_len + 1)
+        if string.len(header) > self.max_header_len then
+            return nil, "response headers too large (limit: " .. self.max_header_len .. " bytes)"
+        end
+    else
+        header, err = header_reader()
+    end
     if not header then
         return nil, "failed to receive response header: " .. err
     end
 
-    -- error("header: " .. header)
-
-    -- FIXME: verify the response headers
-
-    m, err = re_match(header, [[^\s*HTTP/1\.1\s+]], "jo")
-    if not m then
+    -- Validate HTTP status line.
+    local status_line_end = header:find("\r?\n")
+    local status_line
+    if not status_line_end then
         return nil, "bad HTTP response status line: " .. header
+    end
+    status_line = header:sub(1, status_line_end - 1)
+    local status_code = status_line:match("^HTTP/1%.1 (%d+)")
+    if not status_code then
+        return nil, "bad HTTP response status code line: " .. header
+    end
+
+    -- Ensure the status code is 101 (Switching Protocols) per RFC 6455.
+    -- This status code check is optional for backward compatibility.
+    if self.validate_handshake and status_code ~= "101" then
+        local body, body_err = sock:receive("*a")
+        body = body or "(no body received)"
+        return nil, "unexpected HTTP response, code: " .. status_code .. ", body: " .. body
     end
 
     return 1, nil, header
