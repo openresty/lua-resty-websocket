@@ -1896,7 +1896,7 @@ sub {
 GET /c
 
 --- error_log
-lua ssl certificate verify error: (18: self signed certificate)
+lua ssl certificate verify error: (18: self-signed certificate)
 
 --- timeout: 10
 
