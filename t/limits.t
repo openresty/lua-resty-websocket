@@ -4,6 +4,7 @@ use Test::Nginx::Socket::Lua;
 use Cwd qw(cwd);
 use Protocol::WebSocket::Frame;
 
+log_level('info');
 repeat_each(2);
 
 plan tests => repeat_each() * (blocks() * 7);
