@@ -343,12 +343,18 @@ function _M.connect(self, uri, opts)
     self.resp_status_code = m[1]
     self.resp_header = header
     if self.resp_status_code ~= "101" then
-        local closing_ok, closing_err = sock:close()
-        if not closing_ok then
-            ngx_log(ngx_DEBUG, "failed to close the underlying socket: ",
-                closing_err, " when handling a non-101 response")
+        -- RFC 6455 §4.1: a non-101 response means the WebSocket connection
+        -- was never established; mark fatal unconditionally so that no WS
+        -- frames can be sent on what is still a plain HTTP connection.
+        -- When keep_response=true the caller intends to read the HTTP
+        -- response body, so leave the raw socket open for that purpose.
+        if not (opts and opts.keep_response) then
+            local closing_ok, closing_err = sock:close()
+            if not closing_ok then
+                ngx_log(ngx_DEBUG, "failed to close the underlying socket: ",
+                    closing_err, " when handling a non-101 response")
+            end
         end
-
         self.fatal = true
         return nil, "unexpected HTTP response code: " .. m[1], header
     end

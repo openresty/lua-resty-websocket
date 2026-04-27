@@ -6,7 +6,7 @@ use Protocol::WebSocket::Frame;
 
 repeat_each(2);
 
-plan tests => repeat_each() * 162 + 6;
+plan tests => repeat_each() * 162 + 18;
 
 my $pwd = cwd();
 
@@ -972,5 +972,89 @@ Sec-WebSocket-Protocol: chat
 GET /c
 --- response_body
 connect result: unexpected HTTP response code: 200
+--- no_error_log
+[error]
+
+
+
+=== TEST 24: fatal is set and socket is closed after non-101 (default, no keep_response)
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/plain"
+            local ok, err = wb:connect(uri)
+            if ok then
+                ngx.say("unexpected ok")
+                return
+            end
+
+            ngx.say("fatal: ", tostring(wb.fatal))
+
+            local _, send_err = wb:send_text("hello")
+            ngx.say("send_text: ", send_err)
+
+            local _, _, recv_err = wb:recv_frame()
+            ngx.say("recv_frame: ", recv_err)
+        }
+    }
+
+    location = /plain {
+        default_type text/plain;
+        return 200 'plain http';
+    }
+--- request
+GET /c
+--- response_body
+fatal: true
+send_text: fatal error already happened
+recv_frame: fatal error already happened
+--- no_error_log
+[error]
+
+
+
+=== TEST 25: keep_response=true leaves socket open for body reading; fatal still set
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new()
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/plain"
+            local ok, err = wb:connect(uri, { keep_response = true })
+            if ok then
+                ngx.say("unexpected ok")
+                return
+            end
+
+            ngx.say("fatal: ", tostring(wb.fatal))
+
+            local _, send_err = wb:send_text("hello")
+            ngx.say("send_text: ", send_err)
+
+            -- raw socket is still open; read the HTTP response body directly
+            local body, read_err = wb.sock:receive(10)
+            if read_err then
+                ngx.say("body read failed: ", read_err)
+            else
+                ngx.say("body: ", body)
+            end
+            wb.sock:close()
+        }
+    }
+
+    location = /plain {
+        default_type text/plain;
+        return 200 'plain http';
+    }
+--- request
+GET /c
+--- response_body
+fatal: true
+send_text: fatal error already happened
+body: plain http
 --- no_error_log
 [error]
