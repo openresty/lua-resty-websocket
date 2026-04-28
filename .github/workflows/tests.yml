@@ -29,13 +29,11 @@ jobs:
         include:
         - nginx: "1.21.4"
           openssl: "1.1.1s"
-          # becasue tagging error on openresty, we use master temporarily
-          # lua_nginx_module: "v0.10.22"
-          # stream_lua_nginx_module: "v0.0.11"
-          # lua_resty_core: "v0.1.24"
-          lua_nginx_module: "master"
-          stream_lua_nginx_module: "master"
-          lua_resty_core: "master"
+          # Pinned to OpenResty 1.21.4.3 bundle; all three modules have drifted
+          # on master and are no longer mutually compatible with nginx 1.21.4.
+          lua_nginx_module: "v0.10.25"
+          stream_lua_nginx_module: "v0.0.13"
+          lua_resty_core: "v0.1.27"
 
     env:
       JOBS: 3
