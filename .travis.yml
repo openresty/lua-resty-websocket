@@ -35,11 +35,10 @@ env:
     - OPENSSL_PREFIX=/usr/local/openresty/openssl3
     - OPENSSL_LIB=$OPENSSL_PREFIX/lib
     - OPENSSL_INC=$OPENSSL_PREFIX/include
-    - OPENSSL_VER=1.1.1w
     - LD_LIBRARY_PATH=$LUAJIT_LIB:$LD_LIBRARY_PATH
     - TEST_NGINX_SLEEP=0.006
   matrix:
-    - NGINX_VERSION=1.29.4
+    - NGINX_VERSION=1.29.8
 
 install:
   - wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
@@ -47,7 +46,7 @@ install:
   - sudo apt-get update
   - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends openresty-pcre2 openresty-openssl3 openresty-pcre2-dev openresty-openssl3-dev
   - if [ ! -d download-cache ]; then mkdir download-cache; fi
-  - sudo cpanm --notest Test::Nginx Protocol::WebSocket > build.log 2>&1 || (cat build.log && exit 1)
+  - sudo cpanm --notest Test::Nginx IPC::Run Test2::Util Protocol::WebSocket > build.log 2>&1 || (cat build.log && exit 1)
   - git clone https://github.com/openresty/openresty.git ../openresty
   - git clone https://github.com/openresty/nginx-devel-utils.git
   - git clone https://github.com/simpl/ngx_devel_kit.git ../ndk-nginx-module
