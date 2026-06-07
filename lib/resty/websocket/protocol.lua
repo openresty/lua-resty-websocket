@@ -66,7 +66,8 @@ end
 function _M.recv_frame(sock, max_payload_len, force_masking)
     local data, err = sock:receive(2)
     if not data then
-        return nil, nil, "failed to receive the first 2 bytes: " .. err
+        return nil, nil, "failed to receive the first 2 bytes: "
+                         .. (err or "unknown")
     end
 
     local fst, snd = byte(data, 1, 2)
