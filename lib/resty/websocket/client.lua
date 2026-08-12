@@ -276,9 +276,16 @@ function _M.connect(self, uri, opts)
 
     -- FIXME: verify the response headers
 
-    m, err = re_match(header, [[^\s*HTTP/1\.1\s+]], "jo")
+    m, err = re_match(header, [[^\s*HTTP/1\.1\s+(\d+)]], "jo")
     if not m then
         return nil, "bad HTTP response status line: " .. header
+    end
+
+    -- RFC 6455 section 4.1: a status code other than 101 means the server
+    -- has not accepted the upgrade, so the client must fail the connection
+    if m[1] ~= "101" then
+        return nil, "failed websocket handshake: unexpected response status: "
+                    .. m[1], header
     end
 
     return 1, nil, header
