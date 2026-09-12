@@ -2695,3 +2695,72 @@ received text frame: reused connection
 --- no_error_log
 [error]
 [warn]
+
+
+=== TEST 40: capture_error_body appends the body to the handshake error
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new{ capture_error_body = true }
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            local ok, err, res = wb:connect(uri)
+            if ok then
+                ngx.say("unexpected connection success")
+                return
+            end
+
+            ngx.say("error: \"", err, "\"")
+        }
+    }
+
+    location = /s {
+        return 400;
+    }
+--- request
+GET /c
+--- response_body_like
+^error: "failed websocket handshake: unexpected response status: 400, body: <html>.*"
+--- no_error_log
+[error]
+[warn]
+
+
+=== TEST 41: response headers exceed max_header_len
+--- http_config eval: $::HttpConfig
+--- config
+    location = /c {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb, err = client:new{ max_header_len = 1024 }
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/s"
+            local ok, err = wb:connect(uri)
+            if ok then
+                ngx.say("unexpected connection success")
+                return
+            end
+
+            ngx.say("error: \"", err, "\"")
+        }
+    }
+
+    location = /s {
+        content_by_lua_block {
+            ngx.header["X-Custom-1"] = string.rep("X", 5000)
+
+            local server = require "resty.websocket.server"
+            local wb, err = server:new()
+            if not wb then
+                ngx.log(ngx.ERR, "failed to new websocket: ", err)
+                return ngx.exit(444)
+            end
+        }
+    }
+--- request
+GET /c
+--- response_body_like
+^error: "response headers too large \(limit: 1024 bytes\)"
+--- no_error_log
+[error]
+[warn]
