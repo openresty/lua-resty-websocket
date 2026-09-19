@@ -51,11 +51,14 @@ function _M.new(self, opts)
     end
 
     local max_payload_len, send_unmasked, timeout
-    local max_recv_len, max_send_len
+    local max_recv_len, max_send_len, max_header_len
+    local capture_error_body
     if opts then
         max_payload_len = opts.max_payload_len
         max_recv_len = opts.max_recv_len
         max_send_len = opts.max_send_len
+        max_header_len = opts.max_header_len
+        capture_error_body = opts.capture_error_body
 
         send_unmasked = opts.send_unmasked
         timeout = opts.timeout
@@ -68,12 +71,16 @@ function _M.new(self, opts)
     max_payload_len = max_payload_len or 65535
     max_recv_len = max_recv_len or max_payload_len
     max_send_len = max_send_len or max_payload_len
+    max_header_len = max_header_len or 0
+    capture_error_body = capture_error_body or false
 
     return setmetatable({
         sock = sock,
         max_recv_len = max_recv_len,
         max_send_len = max_send_len,
+        max_header_len = max_header_len,
         send_unmasked = send_unmasked,
+        capture_error_body = capture_error_body,
     }, mt)
 end
 
@@ -265,9 +272,21 @@ function _M.connect(self, uri, opts)
         return nil, "failed to send the handshake request: " .. err
     end
 
+    -- read the response up to the end of the headers, optionally bounded
+    -- by max_header_len
+    local header
     local header_reader = sock:receiveuntil("\r\n\r\n")
-    -- FIXME: check for too big response headers
-    local header, err, partial = header_reader()
+    if self.max_header_len > 0 then
+        header, err = header_reader(self.max_header_len + 1)
+        if header and #header > self.max_header_len then
+            return nil, "response headers too large (limit: "
+                        .. self.max_header_len .. " bytes)"
+        end
+
+    else
+        header, err = header_reader()
+    end
+
     if not header then
         return nil, "failed to receive response header: " .. err
     end
@@ -284,8 +303,19 @@ function _M.connect(self, uri, opts)
     -- RFC 6455 section 4.1: a status code other than 101 means the server
     -- has not accepted the upgrade, so the client must fail the connection
     if m[1] ~= "101" then
-        return nil, "failed websocket handshake: unexpected response status: "
-                    .. m[1], header
+        local msg = "failed websocket handshake: unexpected response status: "
+                    .. m[1]
+
+        -- the body usually explains why the upgrade was refused, but reading
+        -- it means waiting on the socket again, so it is opt-in
+        if self.capture_error_body then
+            local body = sock:receive("*a")
+            if body then
+                msg = msg .. ", body: " .. body
+            end
+        end
+
+        return nil, msg, header
     end
 
     return 1, nil, header

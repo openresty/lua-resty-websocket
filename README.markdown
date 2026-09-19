@@ -185,12 +185,18 @@ An optional options table can be specified. The following options are as follows
 * `max_send_len`
 
     Specifies the maximal length of payload allowed when sending WebSocket frames. Defaults to the value of `max_payload_len`.
+* `max_header_len`
+
+    Specifies the maximal length of payload allowed when receiving headers during the WebSocket upgrade process. Defaults to `0`, disabling the check allowing unlimited length.
 * `send_masked`
 
     Specifies whether to send out masked WebSocket frames. When it is `true`, masked frames are always sent. Default to `false`.
 * `timeout`
 
     Specifies the network timeout threshold in milliseconds. You can change this setting later via the `set_timeout` method call. Note that this timeout setting does not affect the HTTP response header sending process for the websocket handshake; you need to configure the [send_timeout](http://nginx.org/en/docs/http/ngx_http_core_module.html#send_timeout) directive at the same time.
+* `capture_error_body`
+
+    Specifies whether to read the response body when the WebSocket upgrade is refused with a status other than 101, and append it to the returned error message. The upgrade is rejected either way; this only controls whether the body is included, since reading it means waiting on the socket again. Default to `false`.
 
 [Back to TOC](#table-of-contents)
 
