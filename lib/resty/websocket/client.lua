@@ -32,7 +32,8 @@ local ssl_support = true
 
 if not ngx.config
     or not ngx.config.ngx_lua_version
-    or ngx.config.ngx_lua_version < 9011
+    or (ngx.config.subsystem ~= "stream"
+        and ngx.config.ngx_lua_version < 9011)
 then
     ssl_support = false
 end
