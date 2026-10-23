@@ -479,7 +479,7 @@ SSL handshake if the `wss://` scheme is used.
 
     Specifies the value of the `Sec-WebSocket-Key` header in the handshake request. The value should be a base64-encoded, 16 byte string conforming to the client handshake requirements of the [WebSocket RFC](https://datatracker.ietf.org/doc/html/rfc6455#section-4.1). If not provided, a key is randomly generated.
 
-The handshake response must contain valid `Upgrade`, `Connection`, and `Sec-WebSocket-Accept` fields. A selected subprotocol must be one offered by the client; extensions are not supported. Invalid handshake responses close the underlying socket.
+The handshake response must contain valid `Upgrade`, `Connection`, and `Sec-WebSocket-Accept` fields. A selected subprotocol must be one offered by the client; extensions are not supported. Folded field values are unfolded for validation, including subprotocol offers in custom request headers. The returned response remains the original raw header. Invalid handshake responses close the underlying socket.
 
 The SSL connection mode (`wss://`) requires at least `ngx_lua` 0.9.11 or OpenResty 1.7.4.1.
 

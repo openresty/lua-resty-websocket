@@ -464,3 +464,73 @@ GET /t
 bad "sec-websocket-protocol" request header
 --- no_error_log
 [error]
+
+
+
+=== TEST 15: trim long whitespace around protocols and empty members
+--- http_config eval: $::HttpConfig
+--- config eval
+$::ServerConfig . q{
+    location = /t {
+        content_by_lua_block {
+            local whitespace = string.rep(" \t", 1000)
+            local offers = {
+                whitespace .. "chat" .. whitespace,
+                "chat," .. whitespace .. "superchat" .. whitespace,
+                whitespace .. "," .. whitespace .. "chat,"
+                .. whitespace
+            }
+            local uri = "ws://127.0.0.1:" .. ngx.var.server_port .. "/ws"
+            for _, protocols in ipairs(offers) do
+                local wb = assert(require("resty.websocket.client"):new())
+                local ok, err, header = wb:connect(uri, {
+                    protocols = protocols
+                })
+                assert(ok, err)
+                local m = assert(ngx.re.match(header,
+                    [[\r\nSec-WebSocket-Protocol: ([^\r\n]+)]], "ijo"))
+                ngx.say("selected: ", m[1])
+                assert(wb:send_text("hello"))
+                local data, typ = wb:recv_frame()
+                ngx.say(data, ": ", typ)
+                assert(wb:close())
+            end
+        }
+    }
+}
+--- request
+GET /t
+--- response_body
+selected: chat
+hello: text
+selected: chat
+hello: text
+selected: chat
+hello: text
+--- no_error_log
+[error]
+
+
+
+=== TEST 16: reject a malformed protocol after long optional whitespace
+--- http_config eval: $::HttpConfig
+--- config
+    keepalive_timeout 0;
+
+    location = /t {
+        content_by_lua_block {
+            local wb, err = require("resty.websocket.server"):new()
+            ngx.say(wb and "connected" or err)
+        }
+    }
+--- request
+GET /t
+--- more_headers eval
+"Upgrade: websocket\nConnection: Upgrade\n"
+. "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\n"
+. "Sec-WebSocket-Version: 13\nSec-WebSocket-Protocol: chat,"
+. (" \t" x 3000) . "/"
+--- response_body
+bad "sec-websocket-protocol" request header
+--- no_error_log
+[error]
