@@ -12,9 +12,12 @@ local http_ver = ngx.req.http_version
 local req_sock = ngx.req.socket
 local ngx_header = ngx.header
 local req_headers = ngx.req.get_headers
+local re_match = ngx.re.match
 local str_lower = string.lower
 local char = string.char
 local str_find = string.find
+local str_sub = string.sub
+local concat = table.concat
 local sha1_bin = ngx.sha1_bin
 local base64 = ngx.encode_base64
 local read_body = ngx.req.read_body
@@ -32,6 +35,32 @@ local _M = new_tab(0, 10)
 _M._VERSION = '0.13'
 
 local mt = { __index = _M }
+
+
+local function select_protocol(protocols)
+    local selected
+    local start = 1
+
+    while true do
+        local comma = str_find(protocols, ",", start, true)
+        local value = str_sub(protocols, start, comma and comma - 1)
+        local m = re_match(value,
+            [[\A[ \t]*([!#$%&'*+\-.^_`|~0-9A-Za-z]*)[ \t]*\z]], "jo")
+        if not m then
+            return nil
+        end
+
+        if not selected and m[1] ~= "" then
+            selected = m[1]
+        end
+
+        if not comma then
+            return selected
+        end
+
+        start = comma + 1
+    end
+end
 
 
 function _M.new(self, opts)
@@ -80,13 +109,19 @@ function _M.new(self, opts)
     end
 
     local protocols = headers["sec-websocket-protocol"]
-    if type(protocols) == "table" then
-        protocols = protocols[1]
+    if protocols then
+        if type(protocols) == "table" then
+            protocols = concat(protocols, ",")
+        end
+
+        local selected = select_protocol(protocols)
+        if not selected then
+            return nil, "bad \"sec-websocket-protocol\" request header"
+        end
+
+        ngx_header["Sec-WebSocket-Protocol"] = selected
     end
 
-    if protocols then
-        ngx_header["Sec-WebSocket-Protocol"] = protocols
-    end
     ngx_header["Upgrade"] = "websocket"
 
     local sha1 = sha1_bin(key .. "258EAFA5-E914-47DA-95CA-C5AB0DC85B11")

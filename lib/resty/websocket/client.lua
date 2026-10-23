@@ -22,12 +22,14 @@ local sha1_bin = ngx.sha1_bin
 local encode_base64 = ngx.encode_base64
 local concat = table.concat
 local char = string.char
+local byte = string.byte
 local str_find = string.find
 local rand = math.random
 local rshift = bit.rshift
 local band = bit.band
 local setmetatable = setmetatable
 local type = type
+local pairs = pairs
 local debug = ngx.config.debug
 local ngx_log = ngx.log
 local ngx_DEBUG = ngx.DEBUG
@@ -46,6 +48,15 @@ _M._VERSION = '0.13'
 
 
 local mt = { __index = _M }
+
+
+local handshake_headers = {
+    upgrade = true,
+    connection = true,
+    ["sec-websocket-accept"] = true,
+    ["sec-websocket-protocol"] = true,
+    ["sec-websocket-extensions"] = true,
+}
 
 
 function _M.new(self, opts)
@@ -83,6 +94,30 @@ function _M.new(self, opts)
 end
 
 
+local function trim_ows(value)
+    local from, to = 1, #value
+    while from <= to do
+        local c = byte(value, from)
+        if c ~= 32 and c ~= 9 then
+            break
+        end
+
+        from = from + 1
+    end
+
+    while to >= from do
+        local c = byte(value, to)
+        if c ~= 32 and c ~= 9 then
+            break
+        end
+
+        to = to - 1
+    end
+
+    return sub(value, from, to)
+end
+
+
 local function has_token(value, token, ignore_case)
     if not value then
         return false
@@ -91,13 +126,13 @@ local function has_token(value, token, ignore_case)
     local from = 1
     while true do
         local comma = str_find(value, ",", from, true)
-        local part = sub(value, from, comma and comma - 1 or #value)
-        local m = re_match(part, [[^[ \t]*(.*?)[ \t]*$]], "jo")
-        if m then
-            part = ignore_case and str_lower(m[1]) or m[1]
-            if part == token then
-                return true
-            end
+        local part = trim_ows(sub(value, from, comma and comma - 1 or #value))
+        if ignore_case then
+            part = str_lower(part)
+        end
+
+        if part == token then
+            return true
         end
 
         if not comma then
@@ -105,6 +140,40 @@ local function has_token(value, token, ignore_case)
         end
 
         from = comma + 1
+    end
+end
+
+
+local function has_protocol(request, protocol)
+    local from, _, err = re_find(protocol,
+        [[\A[!#$%&'*+\-.^_`|~0-9A-Za-z]+\z]], "jo")
+    if err then
+        return nil, err
+    end
+
+    if not from then
+        return false
+    end
+
+    local iter, err = re_gmatch(request,
+        [[\r\nSec-WebSocket-Protocol:[ \t]*([^\r\n]*)]], "ijo")
+    if not iter then
+        return nil, err
+    end
+
+    while true do
+        local m, err = iter()
+        if err then
+            return nil, err
+        end
+
+        if not m then
+            return false
+        end
+
+        if has_token(m[1], protocol, false) then
+            return true
+        end
     end
 end
 
@@ -165,11 +234,10 @@ function _M.connect(self, uri, opts)
     local sock_opts = {}
     local client_cert, client_priv_key
     local header_host
-    local key, protocols
+    local key
 
     if opts then
         local protos = opts.protocols
-        protocols = protos
         if protos then
             if type(protos) == "table" then
                 proto_header = "\r\nSec-WebSocket-Protocol: "
@@ -239,6 +307,8 @@ function _M.connect(self, uri, opts)
     if not ok then
         return nil, "failed to connect: " .. err
     end
+
+    self.recv_state = {}
 
     -- check for connections from pool:
     local reused_count, err = sock:getreusedtimes()
@@ -330,7 +400,7 @@ function _M.connect(self, uri, opts)
 
     local response_headers = {}
     local iter, err = re_gmatch(header,
-        [[\r\n([^:\r\n]+):[ \t]*([^\r\n]*?)[ \t]*(?=\r\n|$)]], "jo")
+        [[\r\n([^:\r\n]+):([^\r\n]*)(?=\r\n|$)]], "jo")
     if not iter then
         return fail_handshake(self, "failed to parse response headers: " .. err,
                               header)
@@ -348,12 +418,19 @@ function _M.connect(self, uri, opts)
         end
 
         local name = str_lower(m[1])
-        local value = m[2]
-        if response_headers[name] then
-            value = response_headers[name] .. "," .. value
-        end
+        if handshake_headers[name] then
+            local values = response_headers[name]
+            if not values then
+                values = {}
+                response_headers[name] = values
+            end
 
-        response_headers[name] = value
+            values[#values + 1] = trim_ows(m[2])
+        end
+    end
+
+    for name, values in pairs(response_headers) do
+        response_headers[name] = concat(values, ",")
     end
 
     if not has_token(response_headers.upgrade, "websocket", true) then
@@ -379,11 +456,13 @@ function _M.connect(self, uri, opts)
 
     local protocol = response_headers["sec-websocket-protocol"]
     if protocol then
-        local offered = type(protocols) == "table" and concat(protocols, ",")
-                        or protocols
-        if str_find(protocol, ",", 1, true)
-           or not has_token(offered, protocol, false)
-        then
+        local offered, err = has_protocol(req, protocol)
+        if err then
+            return fail_handshake(self, "failed to parse request headers: "
+                                        .. err, header)
+        end
+
+        if not offered then
             return fail_handshake(self,
                                   "failed websocket handshake: "
                                   .. "bad Sec-WebSocket-Protocol header",

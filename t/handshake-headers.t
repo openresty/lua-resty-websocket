@@ -477,3 +477,433 @@ socket: false
 pool: false, not initialized
 --- no_error_log
 [error]
+
+
+
+=== TEST 14: subprotocol offered through a custom header
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb = client:new()
+            local ok, err = wb:connect("ws://127.0.0.1:7986/", {
+                key = "dGhlIHNhbXBsZSBub25jZQ==",
+                headers = {"sEc-WeBsOcKeT-pRoToCoL:\tchat , superchat\t"}
+            })
+            ngx.say("connect: ", ok or false, ", ", err)
+            ngx.say("socket: ", wb.sock ~= nil)
+            if ok then
+                wb.sock:close()
+            end
+        }
+    }
+--- tcp_listen: 7986
+--- tcp_reply eval
+"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\nSec-WebSocket-Protocol: superchat\r\n\r\n"
+--- request
+GET /t
+--- response_body
+connect: 1, nil
+socket: true
+--- no_error_log
+[error]
+
+
+
+=== TEST 15: combine generated and repeated custom subprotocol offers
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb = client:new()
+            local ok, err = wb:connect("ws://127.0.0.1:7986/", {
+                key = "dGhlIHNhbXBsZSBub25jZQ==",
+                protocols = {"chat"},
+                headers = {"Sec-WebSocket-Protocol: superchat",
+                           "sec-websocket-protocol: binary"}
+            })
+            ngx.say("connect: ", ok or false, ", ", err)
+            ngx.say("socket: ", wb.sock ~= nil)
+            if ok then
+                wb.sock:close()
+            end
+        }
+    }
+--- tcp_listen: 7986
+--- tcp_reply eval
+"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\nSec-WebSocket-Protocol: binary\r\n\r\n"
+--- request
+GET /t
+--- response_body
+connect: 1, nil
+socket: true
+--- no_error_log
+[error]
+
+
+
+=== TEST 16: custom subprotocol offers are case sensitive
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb = client:new()
+            local ok, err = wb:connect("ws://127.0.0.1:7986/", {
+                key = "dGhlIHNhbXBsZSBub25jZQ==",
+                headers = {"Sec-WebSocket-Protocol: Chat"}
+            })
+            ngx.say("connect: ", ok or false, ", ", err)
+            ngx.say("socket: ", wb.sock ~= nil)
+            if ok then
+                wb.sock:close()
+            end
+        }
+    }
+--- tcp_listen: 7986
+--- tcp_reply eval
+"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\nSec-WebSocket-Protocol: chat\r\n\r\n"
+--- request
+GET /t
+--- response_body
+connect: false, failed websocket handshake: bad Sec-WebSocket-Protocol header
+socket: false
+--- no_error_log
+[error]
+
+
+
+=== TEST 17: an empty offer member cannot match an empty selected protocol
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb = client:new()
+            local ok, err = wb:connect("ws://127.0.0.1:7986/", {
+                key = "dGhlIHNhbXBsZSBub25jZQ==",
+                protocols = "chat,"
+            })
+            ngx.say("connect: ", ok or false, ", ", err)
+            ngx.say("socket: ", wb.sock ~= nil)
+            if ok then
+                wb.sock:close()
+            end
+        }
+    }
+--- tcp_listen: 7986
+--- tcp_reply eval
+"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\nSec-WebSocket-Protocol:\r\n\r\n"
+--- request
+GET /t
+--- response_body
+connect: false, failed websocket handshake: bad Sec-WebSocket-Protocol header
+socket: false
+--- no_error_log
+[error]
+
+
+
+=== TEST 18: an empty custom offer member cannot match a blank selected protocol
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb = client:new()
+            local ok, err = wb:connect("ws://127.0.0.1:7986/", {
+                key = "dGhlIHNhbXBsZSBub25jZQ==",
+                headers = {"Sec-WebSocket-Protocol: ,chat"}
+            })
+            ngx.say("connect: ", ok or false, ", ", err)
+            ngx.say("socket: ", wb.sock ~= nil)
+            if ok then
+                wb.sock:close()
+            end
+        }
+    }
+--- tcp_listen: 7986
+--- tcp_reply eval
+"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\nSec-WebSocket-Protocol: \t \r\n\r\n"
+--- request
+GET /t
+--- response_body
+connect: false, failed websocket handshake: bad Sec-WebSocket-Protocol header
+socket: false
+--- no_error_log
+[error]
+
+
+
+=== TEST 19: repeated ignored headers and upgrade token fields
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb = client:new()
+            local ok, err = wb:connect("ws://127.0.0.1:7986/", {
+                key = "dGhlIHNhbXBsZSBub25jZQ==",
+                protocols = {"chat"}
+            })
+            ngx.say("connect: ", ok or false, ", ", err)
+            ngx.say("socket: ", wb.sock ~= nil)
+            if ok then
+                wb.sock:close()
+            end
+        }
+    }
+--- tcp_listen: 7986
+--- tcp_reply eval
+"HTTP/1.1 101 Switching Protocols\r\nUpgrade: h2c\r\nConnection: keep-alive\r\n"
+. ("X-Filler: abcdefghijklmnop\r\n" x 4096)
+. "uPgRaDe: \tWebSocket \t\r\ncOnNeCtIoN: \tUpGrade\t \r\nSec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\nSec-WebSocket-Protocol: chat\r\n\r\n"
+--- request
+GET /t
+--- response_body
+connect: 1, nil
+socket: true
+--- no_error_log
+[error]
+
+
+
+=== TEST 20: repeated selected protocol fields are rejected
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb = client:new()
+            local ok, err = wb:connect("ws://127.0.0.1:7986/", {
+                key = "dGhlIHNhbXBsZSBub25jZQ==",
+                protocols = {"chat"}
+            })
+            ngx.say("connect: ", ok or false, ", ", err)
+            ngx.say("socket: ", wb.sock ~= nil)
+            if ok then
+                wb.sock:close()
+            end
+        }
+    }
+--- tcp_listen: 7986
+--- tcp_reply eval
+"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\nSec-WebSocket-Protocol: chat\r\nsEc-WeBsOcKeT-pRoToCoL: chat\r\n\r\n"
+--- request
+GET /t
+--- response_body
+connect: false, failed websocket handshake: bad Sec-WebSocket-Protocol header
+socket: false
+--- no_error_log
+[error]
+
+
+
+=== TEST 21: ignored header with long interior whitespace
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb = client:new()
+            local ok, err = wb:connect("ws://127.0.0.1:7986/", {
+                key = "dGhlIHNhbXBsZSBub25jZQ=="
+            })
+            ngx.say("connect: ", ok or false, ", ", err)
+            ngx.say("socket: ", wb.sock ~= nil)
+            if ok then
+                wb.sock:close()
+            end
+        }
+    }
+--- tcp_listen: 7986
+--- tcp_reply eval
+"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nX-Filler: a"
+. (" " x 6000)
+. "b\r\nSec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n"
+--- request
+GET /t
+--- response_body
+connect: 1, nil
+socket: true
+--- no_error_log
+[error]
+
+
+
+=== TEST 22: trim header whitespace including the final field
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local wb = client:new()
+            local ok, err = wb:connect("ws://127.0.0.1:7986/", {
+                key = "dGhlIHNhbXBsZSBub25jZQ==",
+                protocols = {"chat"}
+            })
+            ngx.say("connect: ", ok or false, ", ", err)
+            ngx.say("socket: ", wb.sock ~= nil)
+            if ok then
+                wb.sock:close()
+            end
+        }
+    }
+--- tcp_listen: 7986
+--- tcp_reply eval
+"HTTP/1.1 101 Switching Protocols\r\nUpgrade:\t websocket \t\r\nConnection: \tUpgrade\t \r\nX-Empty:\r\nX-Spaces: "
+. (" " x 6000)
+. "\r\nX-Tabs:\t\t\t\r\nSec-WebSocket-Protocol:\t chat \t\r\nSec-WebSocket-Accept:\t "
+. (" " x 6000)
+. "s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
+. ("\t " x 3000)
+. "\r\n\r\n"
+--- request
+GET /t
+--- response_body
+connect: 1, nil
+socket: true
+--- no_error_log
+[error]
+
+
+
+=== TEST 23: interior whitespace is not a token separator
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local spaces = string.rep(" ", 6000)
+            local cases = {
+                {"web socket", "Upgrade", "chat", "Upgrade"},
+                {"websocket", "up grade", "chat", "Connection"},
+                {"websocket", "Upgrade", "chat" .. spaces .. "other",
+                 "Sec-WebSocket-Protocol"},
+                {"web" .. spaces .. "socket", "Upgrade", "chat", "Upgrade"},
+                {"websocket", "up" .. spaces .. "grade", "chat", "Connection"},
+            }
+
+            for i, case in ipairs(cases) do
+                local header = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: "
+                               .. case[1] .. "\r\nConnection: " .. case[2]
+                               .. "\r\nSec-WebSocket-Accept: "
+                               .. "s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
+                               .. "\r\nSec-WebSocket-Protocol: " .. case[3]
+                local sock = {}
+                function sock:connect()
+                    return true
+                end
+
+                function sock:getreusedtimes()
+                    return 0
+                end
+
+                function sock:send(data)
+                    return #data
+                end
+
+                function sock:receiveuntil()
+                    return function()
+                        return header
+                    end
+                end
+
+                function sock:close()
+                    self.closed = true
+                    return true
+                end
+
+                local wb = {sock = sock}
+                local ok, err = client.connect(wb, "ws://127.0.0.1/", {
+                    key = "dGhlIHNhbXBsZSBub25jZQ==",
+                    protocols = {"chat"}
+                })
+                ngx.say(i, ": ", ok or false, ", ", err)
+                assert(wb.sock == nil and sock.closed)
+            end
+        }
+    }
+--- request
+GET /t
+--- response_body
+1: false, failed websocket handshake: bad Upgrade header
+2: false, failed websocket handshake: bad Connection header
+3: false, failed websocket handshake: bad Sec-WebSocket-Protocol header
+4: false, failed websocket handshake: bad Upgrade header
+5: false, failed websocket handshake: bad Connection header
+--- no_error_log
+[error]
+
+
+
+=== TEST 24: a bare CR or LF cannot terminate a required header value
+--- http_config eval: $::HttpConfig
+--- config
+    location = /t {
+        content_by_lua_block {
+            local client = require "resty.websocket.client"
+            local cases = {
+                {1, "\r", "Upgrade"},
+                {1, "\n", "Upgrade"},
+                {2, "\r", "Connection"},
+                {2, "\n", "Connection"},
+                {3, "\r", "Sec-WebSocket-Accept"},
+                {3, "\n", "Sec-WebSocket-Accept"},
+            }
+
+            for i, case in ipairs(cases) do
+                local fields = {
+                    "Upgrade: websocket",
+                    "Connection: Upgrade",
+                    "Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=",
+                }
+                fields[case[1]] = fields[case[1]] .. case[2] .. "ignored"
+                local header = "HTTP/1.1 101 Switching Protocols\r\n"
+                               .. table.concat(fields, "\r\n")
+                local sock = {}
+                function sock:connect()
+                    return true
+                end
+
+                function sock:getreusedtimes()
+                    return 0
+                end
+
+                function sock:send(data)
+                    return #data
+                end
+
+                function sock:receiveuntil()
+                    return function()
+                        return header
+                    end
+                end
+
+                function sock:close()
+                    self.closed = true
+                    return true
+                end
+
+                local wb = {sock = sock}
+                local ok, err = client.connect(wb, "ws://127.0.0.1/", {
+                    key = "dGhlIHNhbXBsZSBub25jZQ=="
+                })
+                ngx.say(i, ": ", ok or false, ", ", err)
+                assert(wb.sock == nil and sock.closed)
+            end
+        }
+    }
+--- request
+GET /t
+--- response_body
+1: false, failed websocket handshake: bad Upgrade header
+2: false, failed websocket handshake: bad Upgrade header
+3: false, failed websocket handshake: bad Connection header
+4: false, failed websocket handshake: bad Connection header
+5: false, failed websocket handshake: bad Sec-WebSocket-Accept header
+6: false, failed websocket handshake: bad Sec-WebSocket-Accept header
+--- no_error_log
+[error]
