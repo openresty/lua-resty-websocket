@@ -131,6 +131,7 @@ function _M.new(self, opts)
 
     return setmetatable({
         sock = sock,
+        recv_state = {},
         max_recv_len = max_recv_len,
         max_send_len = max_send_len,
         send_masked = send_masked,
@@ -158,7 +159,8 @@ function _M.recv_frame(self)
         return nil, nil, "not initialized yet"
     end
 
-    local data, typ, err =  _recv_frame(sock, self.max_recv_len, true)
+    local data, typ, err = _recv_frame(sock, self.max_recv_len, true,
+                                       self.recv_state)
     if not data and not str_find(err, ": timeout", 1, true) then
         self.fatal = true
     end
