@@ -16,6 +16,7 @@ local tcp = ngx.socket.tcp
 local re_match = ngx.re.match
 local re_find  = ngx.re.find
 local re_gmatch = ngx.re.gmatch
+local re_gsub = ngx.re.gsub
 local str_lower = string.lower
 local sub = string.sub
 local sha1_bin = ngx.sha1_bin
@@ -144,6 +145,22 @@ local function has_token(value, token, ignore_case)
 end
 
 
+local function unfold_headers(value)
+    if not str_find(value, "\r\n ", 1, true)
+       and not str_find(value, "\r\n\t", 1, true)
+    then
+        return value
+    end
+
+    local unfolded, _, err = re_gsub(value, [[\r\n[ \t]+]], " ", "jo")
+    if not unfolded then
+        return nil, err
+    end
+
+    return unfolded
+end
+
+
 local function has_protocol(request, protocol)
     local from, _, err = re_find(protocol,
         [[\A[!#$%&'*+\-.^_`|~0-9A-Za-z]+\z]], "jo")
@@ -153,6 +170,11 @@ local function has_protocol(request, protocol)
 
     if not from then
         return false
+    end
+
+    request, err = unfold_headers(request)
+    if not request then
+        return nil, err
     end
 
     local iter, err = re_gmatch(request,
@@ -398,8 +420,14 @@ function _M.connect(self, uri, opts)
                               .. m[1], header)
     end
 
+    local unfolded_header, err = unfold_headers(header)
+    if not unfolded_header then
+        return fail_handshake(self, "failed to parse response headers: " .. err,
+                              header)
+    end
+
     local response_headers = {}
-    local iter, err = re_gmatch(header,
+    local iter, err = re_gmatch(unfolded_header,
         [[\r\n([^:\r\n]+):([^\r\n]*)(?=\r\n|$)]], "jo")
     if not iter then
         return fail_handshake(self, "failed to parse response headers: " .. err,

@@ -15,6 +15,7 @@ local req_headers = ngx.req.get_headers
 local re_match = ngx.re.match
 local str_lower = string.lower
 local char = string.char
+local byte = string.byte
 local str_find = string.find
 local str_sub = string.sub
 local concat = table.concat
@@ -37,21 +38,47 @@ _M._VERSION = '0.13'
 local mt = { __index = _M }
 
 
+local function trim_ows(value)
+    local from, to = 1, #value
+    while from <= to do
+        local c = byte(value, from)
+        if c ~= 32 and c ~= 9 then
+            break
+        end
+
+        from = from + 1
+    end
+
+    while to >= from do
+        local c = byte(value, to)
+        if c ~= 32 and c ~= 9 then
+            break
+        end
+
+        to = to - 1
+    end
+
+    return str_sub(value, from, to)
+end
+
+
 local function select_protocol(protocols)
     local selected
     local start = 1
 
     while true do
         local comma = str_find(protocols, ",", start, true)
-        local value = str_sub(protocols, start, comma and comma - 1)
-        local m = re_match(value,
-            [[\A[ \t]*([!#$%&'*+\-.^_`|~0-9A-Za-z]*)[ \t]*\z]], "jo")
-        if not m then
-            return nil
-        end
+        local value = trim_ows(str_sub(protocols, start, comma and comma - 1))
+        if value ~= "" then
+            local m = re_match(value,
+                [[\A[!#$%&'*+\-.^_`|~0-9A-Za-z]+\z]], "jo")
+            if not m then
+                return nil
+            end
 
-        if not selected and m[1] ~= "" then
-            selected = m[1]
+            if not selected then
+                selected = value
+            end
         end
 
         if not comma then
