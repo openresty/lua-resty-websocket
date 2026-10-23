@@ -172,6 +172,8 @@ To load this module, just do this
 
 Performs the websocket handshake process on the server side and returns a WebSocket server object.
 
+When the client offers subprotocols, the server selects the first non-empty offered protocol. Empty list members are ignored, but the list must contain at least one valid protocol.
+
 In case of error, it returns `nil` and a string describing the error.
 
 An optional options table can be specified. The following options are as follows:
@@ -447,6 +449,8 @@ SSL handshake if the `wss://` scheme is used.
 * `headers`
 
     Specifies custom headers to be sent in the handshake request. The table is expected to contain strings in the format `{"a-header: a header value", "another-header: another header value"}`.
+
+    Subprotocols offered through custom `Sec-WebSocket-Protocol` headers are included when validating the server's selection.
 
 * `client_cert`
 

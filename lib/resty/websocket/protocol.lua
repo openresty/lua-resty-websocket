@@ -66,24 +66,48 @@ end
 
 -- Keep each field until the whole frame has been received. A timeout may
 -- consume part of a field, so retry only the bytes that are still missing.
+-- Keep partial chunks separately to avoid copying the whole field on retries.
 local function receive(sock, size, state, index)
-    local data = state[index] or ""
-    if #data == size then
+    local data = state[index]
+    local received = 0
+    if type(data) == "string" then
         return data
     end
 
-    local chunk, err, partial = sock:receive(size - #data)
+    if data then
+        received = data.bytes
+        if received == size then
+            data = concat(data, "", 1, data.count)
+            state[index] = data
+            return data
+        end
+    end
+
+    local chunk, err, partial = sock:receive(size - received)
     if not chunk then
         if partial and #partial > 0 then
-            state[index] = data .. partial
+            if data then
+                local count = data.count + 1
+                data[count] = partial
+                data.count = count
+                data.bytes = received + #partial
+
+            else
+                state[index] = {partial, count = 1, bytes = #partial}
+            end
         end
 
         return nil, err
     end
 
-    data = data .. chunk
-    state[index] = data
-    return data
+    if data then
+        local count = data.count + 1
+        data[count] = chunk
+        chunk = concat(data, "", 1, count)
+    end
+
+    state[index] = chunk
+    return chunk
 end
 
 
