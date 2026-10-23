@@ -8,6 +8,7 @@ local ffi = require "ffi"
 local byte = string.byte
 local char = string.char
 local sub = string.sub
+local str_find = string.find
 local band = bit.band
 local bor = bit.bor
 local bxor = bit.bxor
@@ -63,8 +64,31 @@ local function get_string_buf(size)
 end
 
 
-function _M.recv_frame(sock, max_payload_len, force_masking)
-    local data, err = sock:receive(2)
+-- Keep each field until the whole frame has been received. A timeout may
+-- consume part of a field, so retry only the bytes that are still missing.
+local function receive(sock, size, state, index)
+    local data = state[index] or ""
+    if #data == size then
+        return data
+    end
+
+    local chunk, err, partial = sock:receive(size - #data)
+    if not chunk then
+        if partial and #partial > 0 then
+            state[index] = data .. partial
+        end
+
+        return nil, err
+    end
+
+    data = data .. chunk
+    state[index] = data
+    return data
+end
+
+
+local function recv_frame(sock, max_payload_len, force_masking, state)
+    local data, err = receive(sock, 2, state, 1)
     if not data then
         return nil, nil, "failed to receive the first 2 bytes: "
                          .. (err or "unknown")
@@ -104,7 +128,7 @@ function _M.recv_frame(sock, max_payload_len, force_masking)
     -- print("payload len: ", payload_len)
 
     if payload_len == 126 then
-        local data, err = sock:receive(2)
+        local data, err = receive(sock, 2, state, 2)
         if not data then
             return nil, nil, "failed to receive the 2 byte payload length: "
                              .. (err or "unknown")
@@ -113,7 +137,7 @@ function _M.recv_frame(sock, max_payload_len, force_masking)
         payload_len = bor(lshift(byte(data, 1), 8), byte(data, 2))
 
     elseif payload_len == 127 then
-        local data, err = sock:receive(8)
+        local data, err = receive(sock, 8, state, 2)
         if not data then
             return nil, nil, "failed to receive the 8 byte payload length: "
                              .. (err or "unknown")
@@ -167,7 +191,7 @@ function _M.recv_frame(sock, max_payload_len, force_masking)
 
     local data
     if rest > 0 then
-        data, err = sock:receive(rest)
+        data, err = receive(sock, rest, state, 3)
         if not data then
             return nil, nil, "failed to read masking-len and payload: "
                              .. (err or "unknown")
@@ -241,6 +265,19 @@ function _M.recv_frame(sock, max_payload_len, force_masking)
     end
 
     return msg, types[opcode], not fin and "again" or nil
+end
+
+
+function _M.recv_frame(sock, max_payload_len, force_masking, state)
+    state = state or {}
+    local data, typ, err = recv_frame(sock, max_payload_len, force_masking, state)
+    if data or not err or not str_find(err, ": timeout", 1, true) then
+        state[1] = nil
+        state[2] = nil
+        state[3] = nil
+    end
+
+    return data, typ, err
 end
 
 

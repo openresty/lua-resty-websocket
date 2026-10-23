@@ -282,6 +282,8 @@ To control whether to send masked frames, you can pass `true` to the `send_maske
 
 Receives a WebSocket frame from the wire.
 
+After a receive timeout, the next call resumes the same frame, including any partially received header, masking key, or payload.
+
 In case of an error, returns two `nil` values and a string describing the error.
 
 The second return value is always the frame type, which could be one of `continuation`, `text`, `binary`, `close`, `ping`, `pong`, or `nil` (for unknown types).
@@ -473,6 +475,8 @@ SSL handshake if the `wss://` scheme is used.
 
     Specifies the value of the `Sec-WebSocket-Key` header in the handshake request. The value should be a base64-encoded, 16 byte string conforming to the client handshake requirements of the [WebSocket RFC](https://datatracker.ietf.org/doc/html/rfc6455#section-4.1). If not provided, a key is randomly generated.
 
+The handshake response must contain valid `Upgrade`, `Connection`, and `Sec-WebSocket-Accept` fields. A selected subprotocol must be one offered by the client; extensions are not supported. Invalid handshake responses close the underlying socket.
+
 The SSL connection mode (`wss://`) requires at least `ngx_lua` 0.9.11 or OpenResty 1.7.4.1.
 
 [Back to TOC](#table-of-contents)
@@ -489,7 +493,7 @@ Closes the current WebSocket connection. If no `close` frame is sent yet, then t
 
 Puts the current WebSocket connection immediately into the `ngx_lua` cosocket connection pool.
 
-You can specify the max idle timeout (in ms) when the connection is in the pool and the maximal size of the pool every nginx worker process.
+You can specify the max idle timeout (in ms) when the connection is in the pool and the maximal size of the pool every nginx worker process. A connection with a partially received frame or a fatal receive error cannot be put into the pool.
 
 In case of success, returns `1`. In case of errors, returns `nil` with a string describing the error.
 
@@ -577,7 +581,9 @@ To load this module, just do this
 [Back to TOC](#table-of-contents)
 
 #### protocol.recv_frame
-`syntax: data, typ, err = protocol.recv_frame(socket, max_payload_len, force_masking)`
+`syntax: data, typ, err = protocol.recv_frame(socket, max_payload_len, force_masking, state?)`
+
+Pass the same optional `state` table on each call to preserve partial frame data across receive timeouts. The table is cleared when a frame completes or a fatal error occurs. The client and server objects manage this state automatically.
 
 Receives a WebSocket frame from the wire.
 

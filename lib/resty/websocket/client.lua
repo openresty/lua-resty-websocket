@@ -15,6 +15,10 @@ local new_tab = wbproto.new_tab
 local tcp = ngx.socket.tcp
 local re_match = ngx.re.match
 local re_find  = ngx.re.find
+local re_gmatch = ngx.re.gmatch
+local str_lower = string.lower
+local sub = string.sub
+local sha1_bin = ngx.sha1_bin
 local encode_base64 = ngx.encode_base64
 local concat = table.concat
 local char = string.char
@@ -71,10 +75,44 @@ function _M.new(self, opts)
 
     return setmetatable({
         sock = sock,
+        recv_state = {},
         max_recv_len = max_recv_len,
         max_send_len = max_send_len,
         send_unmasked = send_unmasked,
     }, mt)
+end
+
+
+local function has_token(value, token, ignore_case)
+    if not value then
+        return false
+    end
+
+    local from = 1
+    while true do
+        local comma = str_find(value, ",", from, true)
+        local part = sub(value, from, comma and comma - 1 or #value)
+        local m = re_match(part, [[^[ \t]*(.*?)[ \t]*$]], "jo")
+        if m then
+            part = ignore_case and str_lower(m[1]) or m[1]
+            if part == token then
+                return true
+            end
+        end
+
+        if not comma then
+            return false
+        end
+
+        from = comma + 1
+    end
+end
+
+
+local function fail_handshake(self, err, header)
+    self.sock:close()
+    self.sock = nil
+    return nil, err, header
 end
 
 
@@ -127,10 +165,11 @@ function _M.connect(self, uri, opts)
     local sock_opts = {}
     local client_cert, client_priv_key
     local header_host
-    local key
+    local key, protocols
 
     if opts then
         local protos = opts.protocols
+        protocols = protos
         if protos then
             if type(protos) == "table" then
                 proto_header = "\r\nSec-WebSocket-Protocol: "
@@ -262,30 +301,101 @@ function _M.connect(self, uri, opts)
 
     local bytes, err = sock:send(req)
     if not bytes then
-        return nil, "failed to send the handshake request: " .. err
+        return fail_handshake(self, "failed to send the handshake request: "
+                                    .. err)
     end
 
     local header_reader = sock:receiveuntil("\r\n\r\n")
     -- FIXME: check for too big response headers
     local header, err, partial = header_reader()
     if not header then
-        return nil, "failed to receive response header: " .. err
+        return fail_handshake(self, "failed to receive response header: " .. err)
     end
 
     -- error("header: " .. header)
 
-    -- FIXME: verify the response headers
-
     m, err = re_match(header, [[^\s*HTTP/1\.1\s+(\d+)]], "jo")
     if not m then
-        return nil, "bad HTTP response status line: " .. header
+        return fail_handshake(self, "bad HTTP response status line: " .. header)
     end
 
     -- RFC 6455 section 4.1: a status code other than 101 means the server
     -- has not accepted the upgrade, so the client must fail the connection
     if m[1] ~= "101" then
-        return nil, "failed websocket handshake: unexpected response status: "
-                    .. m[1], header
+        return fail_handshake(self,
+                              "failed websocket handshake: "
+                              .. "unexpected response status: "
+                              .. m[1], header)
+    end
+
+    local response_headers = {}
+    local iter, err = re_gmatch(header,
+        [[\r\n([^:\r\n]+):[ \t]*([^\r\n]*?)[ \t]*(?=\r\n|$)]], "jo")
+    if not iter then
+        return fail_handshake(self, "failed to parse response headers: " .. err,
+                              header)
+    end
+
+    while true do
+        local m, err = iter()
+        if err then
+            return fail_handshake(self, "failed to parse response headers: "
+                                        .. err, header)
+        end
+
+        if not m then
+            break
+        end
+
+        local name = str_lower(m[1])
+        local value = m[2]
+        if response_headers[name] then
+            value = response_headers[name] .. "," .. value
+        end
+
+        response_headers[name] = value
+    end
+
+    if not has_token(response_headers.upgrade, "websocket", true) then
+        return fail_handshake(self, "failed websocket handshake: "
+                              .. "bad Upgrade header",
+                              header)
+    end
+
+    if not has_token(response_headers.connection, "upgrade", true) then
+        return fail_handshake(self, "failed websocket handshake: "
+                              .. "bad Connection header",
+                              header)
+    end
+
+    local accept = encode_base64(sha1_bin(key
+                   .. "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))
+    if response_headers["sec-websocket-accept"] ~= accept then
+        return fail_handshake(self,
+                              "failed websocket handshake: "
+                              .. "bad Sec-WebSocket-Accept header",
+                              header)
+    end
+
+    local protocol = response_headers["sec-websocket-protocol"]
+    if protocol then
+        local offered = type(protocols) == "table" and concat(protocols, ",")
+                        or protocols
+        if str_find(protocol, ",", 1, true)
+           or not has_token(offered, protocol, false)
+        then
+            return fail_handshake(self,
+                                  "failed websocket handshake: "
+                                  .. "bad Sec-WebSocket-Protocol header",
+                                  header)
+        end
+    end
+
+    if response_headers["sec-websocket-extensions"] then
+        return fail_handshake(self,
+                              "failed websocket handshake: "
+                              .. "unexpected Sec-WebSocket-Extensions header",
+                              header)
     end
 
     return 1, nil, header
@@ -312,7 +422,8 @@ function _M.recv_frame(self)
         return nil, nil, "not initialized yet"
     end
 
-    local data, typ, err =  _recv_frame(sock, self.max_recv_len, false)
+    local data, typ, err = _recv_frame(sock, self.max_recv_len, false,
+                                       self.recv_state)
     if not data and not str_find(err, ": timeout", 1, true) then
         self.fatal = true
     end
@@ -409,11 +520,20 @@ function _M.close(self)
         end
     end
 
+    self.recv_state = {}
     return sock:close()
 end
 
 
 function _M.set_keepalive(self, ...)
+    if self.fatal then
+        return nil, "fatal error already happened"
+    end
+
+    if self.recv_state[1] then
+        return nil, "cannot pool a partially received frame"
+    end
+
     local sock = self.sock
     if not sock then
         return nil, "not initialized"
